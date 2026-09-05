@@ -9,7 +9,7 @@ import {
   UsersRound,
   X,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { cancelBooking, createBooking, getBookings } from '../api/bookings'
 import { getScheduleData } from '../api/schedule'
@@ -60,8 +60,13 @@ export function BookingPage() {
   const { showNotice } = useBookings()
 
   const [showCancelModal, setShowCancelModal] = useState(false)
+  const [createdBooking, setCreatedBooking] = useState<Booking | null>(null)
 
-  const existingBooking = bookingsQuery.data?.find((b) => b.id === id || b.slotId === id)
+  const existingBooking =
+    bookingsQuery.data?.find((b) => b.id === id || b.slotId === id) ??
+    (createdBooking && (createdBooking.id === id || createdBooking.slotId === id)
+      ? createdBooking
+      : undefined)
   const slotId = existingBooking?.slotId ?? id
   const slot = scheduleData?.slots.find((item) => item.id === slotId)
 
@@ -71,6 +76,10 @@ export function BookingPage() {
     (suggestedTrainer === 'dima' || suggestedTrainer === 'vanya' ? suggestedTrainer : 'self')
   const [mode, setMode] = useState<BookingMode>(initialMode)
   const [successBooking, setSuccessBooking] = useState<Booking | null>(null)
+
+  useEffect(() => {
+    setSuccessBooking(null)
+  }, [id])
 
   const refresh = async () =>
     Promise.all([
@@ -84,6 +93,11 @@ export function BookingPage() {
     mutationFn: () => createBooking(slot!, mode),
     onSuccess: async (booking) => {
       setSuccessBooking(booking)
+      setCreatedBooking(booking)
+      queryClient.setQueryData<Booking[]>(['bookings'], (old) => {
+        if (!old) return [booking]
+        return [booking, ...old.filter((b) => b.id !== booking.id)]
+      })
       showNotice('Тренировка записана')
       await refresh()
     },
@@ -91,9 +105,18 @@ export function BookingPage() {
 
   const cancelMutation = useMutation({
     mutationFn: () => cancelBooking(existingBooking!.id),
-    onSuccess: async () => {
+    onSuccess: async (cancelledBooking) => {
       showNotice('Запись отменена')
       setShowCancelModal(false)
+      if (cancelledBooking) {
+        setCreatedBooking(cancelledBooking)
+      }
+      queryClient.setQueryData<Booking[]>(['bookings'], (old) => {
+        if (!old) return old
+        return old.map((b) =>
+          b.id === existingBooking!.id ? { ...b, status: 'cancelled' as const } : b,
+        )
+      })
       await refresh()
     },
   })
@@ -159,8 +182,12 @@ export function BookingPage() {
         <div className="booking-actions">
           <ButtonLink
             to={`/booking/${successBooking.id}`}
+            replace
             variant="primary"
             className="booking-submit-btn"
+            onClick={() => {
+              setSuccessBooking(null)
+            }}
           >
             Открыть детали тренировки
           </ButtonLink>
