@@ -1,0 +1,10 @@
+{
+  "name": "Железный Рюрик",
+  "short_name": "Рюрик",
+  "description": "Запись в частный спортивный зал в Великом Новгороде",
+  "lang": "ru",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#111111"
+}

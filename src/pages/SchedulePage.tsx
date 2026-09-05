@@ -1,0 +1,215 @@
+import { useQuery } from '@tanstack/react-query'
+import { AlertCircle, ArrowRight, CalendarDays, CalendarX, UsersRound } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { DateStrip } from '../components/DateStrip'
+import { PageHeader, Skeleton } from '../components/ui'
+import { getScheduleData } from '../api/schedule'
+import { getTrainers } from '../api/trainers'
+import type { ScheduleDay } from '../types/domain'
+
+interface AvailabilityResult {
+  free: number
+  label: string
+  tone: 'positive' | 'warning' | 'full'
+  isAvailable: boolean
+}
+
+function getSlotAvailability(occupied: number, capacity: number, isBlocked: boolean): AvailabilityResult {
+  if (isBlocked) {
+    return { free: 0, label: 'Зал закрыт', tone: 'full', isAvailable: false }
+  }
+  const free = Math.max(0, capacity - occupied)
+  if (free <= 0) {
+    return { free: 0, label: 'Мест нет', tone: 'full', isAvailable: false }
+  }
+  if (free === 1) {
+    return { free: 1, label: '1 место свободно', tone: 'warning', isAvailable: true }
+  }
+  if (free === 2) {
+    return { free: 2, label: '2 места свободно', tone: 'warning', isAvailable: true }
+  }
+  if (free >= 3 && free <= 4) {
+    return { free, label: `${free} места свободно`, tone: 'positive', isAvailable: true }
+  }
+  return { free, label: `${free} мест свободно`, tone: 'positive', isAvailable: true }
+}
+
+function formatDayHeading(day: ScheduleDay): string {
+  const weekdayFormatted =
+    day.weekday.charAt(0).toUpperCase() + day.weekday.slice(1).toLowerCase()
+  return `${weekdayFormatted}, ${day.day} ${day.monthLabel}`
+}
+
+export function SchedulePage() {
+  const [params, setParams] = useSearchParams()
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['schedule'],
+    queryFn: getScheduleData,
+  })
+  const trainersQuery = useQuery({
+    queryKey: ['trainers'],
+    queryFn: getTrainers,
+  })
+
+  const selectedDate = params.get('date') ?? data?.days[0]?.id ?? ''
+  const trainerId = params.get('trainer')
+  const trainer = trainersQuery.data?.find((item) => item.id === trainerId)
+
+  const selectDate = (date: string) => {
+    const next = new URLSearchParams(params)
+    next.set('date', date)
+    setParams(next)
+  }
+
+  // Loading skeleton matching layout shape
+  if (isLoading) {
+    return (
+      <div className="page schedule-page" aria-busy="true" aria-label="Загрузка расписания">
+        <PageHeader eyebrow="Запись" title="Выберите время" />
+        <div className="date-strip-skeleton" aria-hidden="true">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <Skeleton key={i} className="date-strip-skeleton__item" />
+          ))}
+        </div>
+        <div className="schedule-day-title-skeleton" aria-hidden="true">
+          <Skeleton style={{ width: '150px', height: '20px', borderRadius: '6px' }} />
+        </div>
+        <div className="slot-list" aria-hidden="true">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="time-slot-skeleton" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (isError || !data) {
+    return (
+      <div className="page schedule-page">
+        <PageHeader eyebrow="Запись" title="Выберите время" />
+        <div className="schedule-state-card schedule-state-card--error" role="alert">
+          <AlertCircle size={32} className="schedule-state-card__icon" aria-hidden="true" />
+          <h3 className="schedule-state-card__title">Не удалось загрузить расписание</h3>
+          <p className="schedule-state-card__text">Проверьте соединение с интернетом и попробуйте снова.</p>
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={() => refetch()}
+          >
+            Повторить
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const slots = data.slots.filter((slot) => slot.dateId === selectedDate)
+  const selectedDay = data.days.find((day) => day.id === selectedDate) ?? data.days[0]
+
+  return (
+    <div className="page schedule-page">
+      <PageHeader eyebrow="Запись" title="Выберите время" />
+
+      {trainer && (
+        <div className="schedule-filter">
+          <span>С тренером {trainer.name}</span>
+          <button type="button" onClick={() => setParams({ date: selectedDate })}>
+            Сбросить
+          </button>
+        </div>
+      )}
+
+      <DateStrip days={data.days} selectedId={selectedDate} onSelect={selectDate} />
+
+      {selectedDay && (
+        <div className="schedule-day-title">
+          <CalendarDays size={18} className="schedule-day-title__icon" aria-hidden="true" />
+          <h2>{formatDayHeading(selectedDay)}</h2>
+        </div>
+      )}
+
+      {slots.length === 0 ? (
+        <div className="schedule-state-card schedule-state-card--empty" role="status">
+          <CalendarX size={32} className="schedule-state-card__icon" aria-hidden="true" />
+          <h3 className="schedule-state-card__title">На этот день тренировок нет</h3>
+          <p className="schedule-state-card__text">
+            Выберите другую дату в календаре выше или посмотрите ближайшие доступные дни.
+          </p>
+          {data.days[0] && data.days[0].id !== selectedDate && (
+            <button
+              type="button"
+              className="button button--secondary"
+              onClick={() => selectDate(data.days[0].id)}
+            >
+              Выбрать {data.days[0].day} {data.days[0].monthLabel}
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="slot-list" role="list" aria-label="Доступные временные слоты">
+          {slots.map((slot) => {
+            const availability = getSlotAvailability(slot.occupied, slot.capacity, slot.isBlocked)
+            const query = trainer ? `?trainer=${trainer.id}` : ''
+            const isClickable = availability.isAvailable
+
+            if (!isClickable) {
+              return (
+                <div
+                  key={slot.id}
+                  className="time-slot is-disabled"
+                  role="listitem"
+                  aria-disabled="true"
+                >
+                  <div className="time-slot__time-col">
+                    <strong className="time-slot__interval">{slot.startAt}–{slot.endAt}</strong>
+                    <span className="time-slot__duration">60 мин</span>
+                  </div>
+
+                  <div className="time-slot__status-col">
+                    <div className="time-slot__occupancy">
+                      <UsersRound size={15} aria-hidden="true" />
+                      <span>{slot.occupied} / {slot.capacity}</span>
+                    </div>
+                    <span className="time-slot__status is-full">{availability.label}</span>
+                  </div>
+                </div>
+              )
+            }
+
+            return (
+              <Link
+                key={slot.id}
+                to={`/booking/${slot.id}${query}`}
+                className="time-slot is-available"
+                role="listitem"
+                aria-label={`Записаться на время ${slot.startAt}–{slot.endAt}, ${availability.label}, занято ${slot.occupied} из ${slot.capacity}`}
+              >
+                <div className="time-slot__time-col">
+                  <strong className="time-slot__interval">{slot.startAt}–{slot.endAt}</strong>
+                  <span className="time-slot__duration">60 мин</span>
+                </div>
+
+                <div className="time-slot__status-col">
+                  <div className="time-slot__occupancy">
+                    <UsersRound size={15} aria-hidden="true" />
+                    <span>{slot.occupied} / {slot.capacity}</span>
+                  </div>
+                  <span className={`time-slot__status is-${availability.tone}`}>
+                    {availability.label}
+                  </span>
+                </div>
+
+                <div className="time-slot__affordance" aria-hidden="true">
+                  <ArrowRight size={18} />
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      )}
+
+      <p className="schedule-note">Время для Великого Новгорода · UTC+3</p>
+    </div>
+  )
+}

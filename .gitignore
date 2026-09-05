@@ -1,0 +1,26 @@
+node_modules/
+dist/
+.run/
+*.local
+backend/.venv/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+backend/.pytest_temp/
+data/*.db
+data/*.db-wal
+data/*.db-shm
+backups/
+.env
+*.zip
+.DS_Store
+Thumbs.db
+
+# Mobile build artifacts
+android/app/build/
+android/build/
+android/.gradle/
+android/capacitor-cordova-android-plugins/build/
+ios/App/build/
+ios/App/Pods/
+ios/App/DerivedData/
