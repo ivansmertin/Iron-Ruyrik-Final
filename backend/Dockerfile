@@ -9,6 +9,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN mkdir -p /app/data /app/backups
+
+VOLUME ["/app/data", "/app/backups"]
+
 EXPOSE 8000
 
-CMD ["sh", "-c", "python -m alembic upgrade head && python -m app.scripts.seed && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "python -m alembic upgrade head && python -m app.scripts.bootstrap && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]

@@ -28,8 +28,19 @@ export function MobileBottomNav() {
     return false
   }
 
+  const activeIndex = clientNavigation.findIndex(({ to }) => isTabActive(to))
+
   return (
     <nav className="mobile-nav" aria-label="Основная навигация">
+      {activeIndex >= 0 && (
+        <span
+          className="mobile-nav__indicator"
+          style={{
+            transform: `translateX(${activeIndex * 100}%)`,
+          }}
+          aria-hidden="true"
+        />
+      )}
       {clientNavigation.map(({ to, label, icon: Icon }) => {
         const active = isTabActive(to)
         return (

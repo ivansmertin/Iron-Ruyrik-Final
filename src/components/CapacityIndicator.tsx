@@ -1,35 +1,34 @@
-import { Lock, Users } from 'lucide-react'
 import type { GymCapacity } from '../types/domain'
 
 export function CapacityIndicator({ occupied, limit }: GymCapacity) {
   const free = Math.max(0, limit - occupied)
   const isFull = free === 0
-  const isHigh = occupied >= 6 && !isFull
 
-  const statusText = isFull
-    ? 'Зал заполнен · Только текущие записи'
-    : isHigh
-      ? `Осталось ${free} ${free === 1 ? 'место' : 'места'} · Высокая загрузка`
-      : `Свободно ${free} из ${limit} мест · До 8 человек одновременно`
+  const statusNote = isFull
+    ? 'Все места заняты · Только текущие записи'
+    : occupied === 0
+      ? `Все ${limit} мест свободны`
+      : free === 1
+        ? 'Осталось 1 место'
+        : free <= 4
+          ? `Осталось ${free} места`
+          : `Осталось ${free} мест`
 
   return (
     <div
-      className={`capacity-widget ${isFull ? 'is-full' : ''}`}
+      className={`capacity-section ${isFull ? 'is-full' : ''}`}
       role="region"
-      aria-label={`Сейчас в зале ${occupied} из ${limit} человек`}
+      aria-label={`Сейчас в зале: ${occupied} из ${limit} человек, ${statusNote}`}
     >
-      <div className="capacity-widget__top">
-        <span className="eyebrow capacity-widget__eyebrow">СЕЙЧАС В ЗАЛЕ</span>
-        <span className={`capacity-widget__status-tag ${isFull ? 'is-full' : isHigh ? 'is-high' : 'is-free'}`}>
-          {isFull ? <Lock size={11} aria-hidden="true" /> : <Users size={11} aria-hidden="true" />}
-          <span>{isFull ? 'Заполнено' : `${free} свободно`}</span>
-        </span>
+      <div className="capacity-section__header">
+        <span className="eyebrow capacity-section__eyebrow">СЕЙЧАС В ЗАЛЕ</span>
       </div>
 
-      <div className="capacity-widget__main">
-        <div className="capacity-widget__num-block">
-          <strong className="capacity-widget__current">{occupied}</strong>
-          <span className="capacity-widget__total">из {limit}</span>
+      <div className="capacity-section__hero">
+        <div className="capacity-section__metric">
+          <strong className="capacity-section__occupied">{occupied}</strong>
+          <span className="capacity-section__divider" aria-hidden="true">/</span>
+          <span className="capacity-section__limit">{limit}</span>
         </div>
 
         {/* 8 Discrete Athletic Segments */}
@@ -46,9 +45,7 @@ export function CapacityIndicator({ occupied, limit }: GymCapacity) {
         </div>
       </div>
 
-      <p className="capacity-widget__note">{statusText}</p>
+      <p className="capacity-section__note">{statusNote}</p>
     </div>
   )
 }
-
-

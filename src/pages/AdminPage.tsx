@@ -5,7 +5,7 @@ import { Link, Navigate } from 'react-router-dom'
 import { addAdminBooking, createBookingBlock, deleteBookingBlock, getAdminBookings, getAdminSettings, getBookingBlocks, patchAdminSettings } from '../api/admin'
 import { getProfileData } from '../api/profile'
 import { getScheduleData } from '../api/schedule'
-import { Button, LoadingPage } from '../components/ui'
+import { Button, LoadingPage, Modal } from '../components/ui'
 
 export function AdminPage() {
   const queryClient = useQueryClient()
@@ -97,7 +97,39 @@ export function AdminPage() {
             <label><span className="sr-only">Вместимость зала</span><button type="button" disabled={settingsMutation.isPending || capacity <= 1} onClick={() => settingsMutation.mutate({ gymCapacity: capacity - 1 })}>−</button><output>{capacity}</output><button type="button" disabled={settingsMutation.isPending || capacity >= 20} onClick={() => settingsMutation.mutate({ gymCapacity: capacity + 1 })}>+</button></label>
           </section>
         </main>
-        {showForm && <div className="modal-backdrop" role="presentation"><div className="modal" role="dialog" aria-modal="true" aria-labelledby="add-client-title"><button type="button" className="modal__close" onClick={() => setShowForm(false)} aria-label="Закрыть"><X size={20} /></button><h2 id="add-client-title">Записать клиента</h2><p>Добавьте запись на {formSlot?.startAt}. Она сохранится в базе.</p><form onSubmit={addClient}><label>Имя клиента<input value={clientName} onChange={(event) => setClientName(event.target.value)} autoFocus placeholder="Например, Сергей" /></label><Button type="submit" disabled={!clientName.trim() || bookingMutation.isPending}>{bookingMutation.isPending ? 'Добавляем…' : 'Добавить запись'}</Button></form></div></div>}
+        <Modal
+          isOpen={showForm}
+          onClose={() => setShowForm(false)}
+          titleId="add-client-title"
+        >
+          <button
+            type="button"
+            className="modal__close"
+            onClick={() => setShowForm(false)}
+            aria-label="Закрыть"
+          >
+            <X size={20} />
+          </button>
+          <h2 id="add-client-title">Записать клиента</h2>
+          <p>Добавьте запись на {formSlot?.startAt}. Она сохранится в базе.</p>
+          <form onSubmit={addClient}>
+            <label>
+              Имя клиента
+              <input
+                value={clientName}
+                onChange={(event) => setClientName(event.target.value)}
+                autoFocus
+                placeholder="Например, Сергей"
+              />
+            </label>
+            <Button
+              type="submit"
+              disabled={!clientName.trim() || bookingMutation.isPending}
+            >
+              {bookingMutation.isPending ? 'Добавляем…' : 'Добавить запись'}
+            </Button>
+          </form>
+        </Modal>
       </div>
     </div>
   )

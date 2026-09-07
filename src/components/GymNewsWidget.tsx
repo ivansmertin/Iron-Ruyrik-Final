@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, Eye, ExternalLink } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react'
 import { useState } from 'react'
 import { getGymNews } from '../api/news'
-import { Card, Skeleton } from './ui'
+import { Skeleton } from './ui'
 
 function TelegramIcon({ size = 15, className = '' }: { size?: number; className?: string }) {
   return (
@@ -61,57 +61,73 @@ export function GymNewsWidget() {
 
   if (isLoading) {
     return (
-      <div className="gym-news-section" aria-label="Новости зала">
-        <div className="gym-news-header">
-          <span className="eyebrow gym-news-header__eyebrow">НОВОСТИ ЗАЛА</span>
-          <span className="gym-news-header__channel">@goverrun</span>
+      <section className="gym-news-feed gym-news-feed--skeleton" aria-label="Новости зала">
+        <div className="gym-news-feed__header">
+          <span className="eyebrow gym-news-feed__eyebrow">НОВОСТИ ЗАЛА</span>
+          <Skeleton style={{ width: '80px', height: '14px' }} />
         </div>
-        <Card className="gym-news-card gym-news-card--skeleton">
-          <Skeleton className="skeleton--row" style={{ height: '36px', marginBottom: '12px' }} />
-          <Skeleton className="skeleton--hero" style={{ height: '110px', marginBottom: '12px' }} />
-          <Skeleton className="skeleton--title" style={{ width: '80%', height: '20px' }} />
-        </Card>
-      </div>
-
+        <div className="gym-news-feed__post">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+            <Skeleton style={{ width: '36px', height: '36px', borderRadius: '50%' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <Skeleton style={{ width: '110px', height: '14px' }} />
+              <Skeleton style={{ width: '150px', height: '12px' }} />
+            </div>
+          </div>
+          <Skeleton style={{ width: '100%', height: '180px', marginBottom: '14px', borderRadius: '2px' }} />
+          <Skeleton style={{ width: '95%', height: '14px', marginBottom: '6px' }} />
+          <Skeleton style={{ width: '70%', height: '14px' }} />
+        </div>
+      </section>
     )
   }
 
   const posts = data?.posts && data.posts.length > 0 ? data.posts.slice(0, 5) : []
   const channelUrl = data?.channelUrl ?? 'https://t.me/goverrun'
   const channelHandle = data?.channelHandle ?? '@goverrun'
+  const authorName = data?.authorName || 'Дмитрий Говер'
+  const authorRole = data?.authorRole || 'Основатель и тренер'
+  const initials = authorName
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'ДГ'
   const currentPost = posts[activeIndex] ?? null
 
   if (!currentPost || isError) {
     return (
-      <div className="gym-news-section" aria-label="Новости зала">
-        <div className="gym-news-header">
-          <span className="eyebrow gym-news-header__eyebrow">НОВОСТИ ЗАЛА</span>
+      <section className="gym-news-feed" aria-label="Новости зала">
+        <div className="gym-news-feed__header">
+          <span className="eyebrow gym-news-feed__eyebrow">НОВОСТИ ЗАЛА</span>
           <a
             href={channelUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="gym-news-header__link"
+            className="gym-news-feed__channel-link"
+            aria-label={`Канал ${channelHandle} в Telegram (откроется в новой вкладке)`}
           >
             <TelegramIcon size={14} />
             <span>{channelHandle}</span>
-            <ExternalLink size={12} />
+            <ExternalLink size={12} aria-hidden="true" />
           </a>
         </div>
-        <Card className="gym-news-card gym-news-card--fallback">
-          <p className="gym-news-card__fallback-text">
+        <div className="gym-news-feed__fallback">
+          <p className="gym-news-feed__fallback-text">
             Следите за тренировками, режимом и новостями зала в авторском канале Дмитрия Говера.
           </p>
           <a
             href={channelUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="button button--secondary gym-news-card__btn"
+            className="button button--secondary gym-news-feed__btn"
           >
             <TelegramIcon size={16} />
             <span>Перейти в @goverrun</span>
           </a>
-        </Card>
-      </div>
+        </div>
+      </section>
     )
   }
 
@@ -137,65 +153,57 @@ export function GymNewsWidget() {
   }
 
   return (
-    <div className="gym-news-section" aria-label="Новости зала">
-      <div className="gym-news-header">
-        <div className="gym-news-header__left">
-          <span className="eyebrow gym-news-header__eyebrow">НОВОСТИ ЗАЛА</span>
-        </div>
-
+    <section className="gym-news-feed" aria-label="Новости зала">
+      <div className="gym-news-feed__header">
+        <span className="eyebrow gym-news-feed__eyebrow">НОВОСТИ ЗАЛА</span>
         <a
           href={channelUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="gym-news-header__link"
-          title="Открыть канал Говер на движениях в Telegram"
+          className="gym-news-feed__channel-link"
+          aria-label={`Канал ${channelHandle} в Telegram (откроется в новой вкладке)`}
         >
           <TelegramIcon size={14} />
           <span>{channelHandle}</span>
-          <ExternalLink size={11} />
+          <ExternalLink size={12} aria-hidden="true" />
         </a>
       </div>
 
-      <Card className="gym-news-card">
-        {/* Author row */}
-        <div className="gym-news-card__author-bar">
-          <div className="gym-news-card__author-info">
-            <div className="gym-news-card__avatar" aria-hidden="true">
-              <span>ДГ</span>
-            </div>
-            <div className="gym-news-card__author-meta">
-              <span className="gym-news-card__author-name">Дмитрий Говер</span>
-              <span className="gym-news-card__author-role">Основатель и тренер</span>
-            </div>
+      <article className="gym-news-feed__post">
+        {/* Author Bar */}
+        <div className="gym-news-feed__author">
+          <div className="gym-news-feed__avatar" aria-hidden="true">
+            <span>{initials}</span>
           </div>
-
-          <div className="gym-news-card__meta-right">
-            {dateLabel && <span className="gym-news-card__date">{dateLabel}</span>}
+          <div className="gym-news-feed__author-meta">
+            <span className="gym-news-feed__author-name">{authorName}</span>
+            <span className="gym-news-feed__author-role">
+              {authorRole}{dateLabel ? ` · ${dateLabel}` : ''}
+            </span>
           </div>
         </div>
 
-        {/* Media Preview if post has image */}
+        {/* Large Media Preview */}
         {hasImage && currentPost.imageUrl && (
-          <div className="gym-news-card__media-wrapper">
+          <div className="gym-news-feed__media-wrap">
             <img
               src={currentPost.imageUrl}
               alt="Фото к новости зала"
-              className="gym-news-card__media"
+              className="gym-news-feed__media"
               loading="lazy"
               onError={() => setImageFailed(true)}
             />
-            <div className="gym-news-card__media-gradient" />
           </div>
         )}
 
         {/* Post Text */}
         {currentPost.text && (
-          <div className="gym-news-card__body">
-            <p className="gym-news-card__text">{displayText}</p>
+          <div className="gym-news-feed__body">
+            <p className="gym-news-feed__text">{displayText}</p>
             {isLongText && (
               <button
                 type="button"
-                className="gym-news-card__toggle-btn"
+                className="gym-news-feed__toggle-btn"
                 onClick={() => setIsExpanded((prev) => !prev)}
               >
                 {isExpanded ? 'Свернуть' : 'Читать дальше'}
@@ -205,23 +213,23 @@ export function GymNewsWidget() {
         )}
 
         {/* Footer actions & pagination */}
-        <div className="gym-news-card__footer">
+        <div className="gym-news-feed__footer">
           {posts.length > 1 ? (
-            <div className="gym-news-card__nav" aria-label="Переключение новостей">
+            <div className="gym-news-feed__pagination" aria-label="Переключение новостей">
               <button
                 type="button"
-                className="gym-news-card__nav-arrow"
+                className="gym-news-feed__nav-btn"
                 onClick={handlePrev}
                 aria-label="Предыдущая новость"
               >
                 <ChevronLeft size={16} />
               </button>
-              <div className="gym-news-card__dots">
+              <div className="gym-news-feed__dots">
                 {posts.map((_, idx) => (
                   <button
                     key={idx}
                     type="button"
-                    className={`gym-news-card__dot ${idx === activeIndex ? 'is-active' : ''}`}
+                    className={`gym-news-feed__dot ${idx === activeIndex ? 'is-active' : ''}`}
                     onClick={() => {
                       setImageFailed(false)
                       setIsExpanded(false)
@@ -233,33 +241,30 @@ export function GymNewsWidget() {
               </div>
               <button
                 type="button"
-                className="gym-news-card__nav-arrow"
+                className="gym-news-feed__nav-btn"
                 onClick={handleNext}
                 aria-label="Следующая новость"
               >
                 <ChevronRight size={16} />
               </button>
             </div>
-          ) : (
-            currentPost.views && (
-              <span className="gym-news-card__views">
-                <Eye size={12} />
-                <span>{currentPost.views}</span>
-              </span>
-            )
-          )}
+          ) : <div />}
 
-          <a
-            href={currentPost.url || channelUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="gym-news-card__post-link"
-          >
-            <TelegramIcon size={14} />
-            <span>В Telegram</span>
-          </a>
+          {currentPost.url && currentPost.url !== channelUrl ? (
+            <a
+              href={currentPost.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="gym-news-feed__post-link"
+              aria-label="Открыть публикацию в Telegram (откроется в новой вкладке)"
+            >
+              <TelegramIcon size={14} />
+              <span>К публикации</span>
+              <ExternalLink size={12} aria-hidden="true" />
+            </a>
+          ) : null}
         </div>
-      </Card>
-    </div>
+      </article>
+    </section>
   )
 }

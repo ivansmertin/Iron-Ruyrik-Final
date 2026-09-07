@@ -76,3 +76,58 @@ export function calculateDelta(
     label,
   }
 }
+
+const APP_TIMEZONE = 'Europe/Moscow'
+
+/**
+ * Format human-friendly semantic date for Hero workout:
+ * "Сегодня, 8 сентября", "Завтра, 9 сентября", or "Ср, 10 сентября"
+ */
+export function formatHeroSemanticDate(dateStr?: string | null, isoStr?: string | null): string {
+  if (!dateStr && !isoStr) return ''
+  try {
+    const now = new Date()
+    const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: APP_TIMEZONE }).format(now)
+
+    let datePart = dateStr?.includes('T') ? dateStr.split('T')[0] : (dateStr ?? '')
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart) && isoStr) {
+      datePart = new Intl.DateTimeFormat('en-CA', { timeZone: APP_TIMEZONE }).format(new Date(isoStr))
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+      return dateStr ?? ''
+    }
+
+    const [ty, tm, td] = todayStr.split('-').map(Number)
+    const [y, m, d] = datePart.split('-').map(Number)
+
+    const todayUtc = Date.UTC(ty, tm - 1, td)
+    const targetUtc = Date.UTC(y, m - 1, d)
+    const diffDays = Math.round((targetUtc - todayUtc) / (24 * 60 * 60 * 1000))
+
+    const dateObj = isoStr ? new Date(isoStr) : new Date(`${datePart}T12:00:00+03:00`)
+    const dayMonth = new Intl.DateTimeFormat('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      timeZone: APP_TIMEZONE,
+    }).format(dateObj)
+
+    if (diffDays === 0) {
+      return `Сегодня, ${dayMonth}`
+    }
+    if (diffDays === 1) {
+      return `Завтра, ${dayMonth}`
+    }
+
+    const weekdayShort = new Intl.DateTimeFormat('ru-RU', {
+      weekday: 'short',
+      timeZone: APP_TIMEZONE,
+    })
+      .format(dateObj)
+      .replace('.', '')
+    const capitalizedWeekday = weekdayShort.charAt(0).toUpperCase() + weekdayShort.slice(1)
+    return `${capitalizedWeekday}, ${dayMonth}`
+  } catch {
+    return dateStr ?? ''
+  }
+}

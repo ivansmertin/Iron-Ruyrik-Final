@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { AlertCircle, ArrowRight, CalendarDays, CalendarX, UsersRound } from 'lucide-react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { DateStrip } from '../components/DateStrip'
 import { PageHeader, Skeleton } from '../components/ui'
 import { getScheduleData } from '../api/schedule'
@@ -42,6 +43,10 @@ function formatDayHeading(day: ScheduleDay): string {
 
 export function SchedulePage() {
   const [params, setParams] = useSearchParams()
+  const location = useLocation()
+  const backSlotId = (location.state as { fromSlotId?: string } | null)?.fromSlotId
+  const [activeSlotId, setActiveSlotId] = useState<string | null>(null)
+  const transitioningSlotId = activeSlotId ?? backSlotId
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['schedule'],
     queryFn: getScheduleData,
@@ -177,16 +182,25 @@ export function SchedulePage() {
               )
             }
 
+            const isTransitioning = transitioningSlotId === slot.id
+
             return (
               <Link
                 key={slot.id}
                 to={`/booking/${slot.id}${query}`}
-                className="time-slot is-available"
+                viewTransition
+                onClick={() => setActiveSlotId(slot.id)}
+                className={`time-slot is-available ${isTransitioning ? 'is-transitioning' : ''}`}
                 role="listitem"
-                aria-label={`Записаться на время ${slot.startAt}–{slot.endAt}, ${availability.label}, занято ${slot.occupied} из ${slot.capacity}`}
+                aria-label={`Записаться на время ${slot.startAt}–${slot.endAt}, ${availability.label}, занято ${slot.occupied} из ${slot.capacity}`}
               >
                 <div className="time-slot__time-col">
-                  <strong className="time-slot__interval">{slot.startAt}–{slot.endAt}</strong>
+                  <strong
+                    className="time-slot__interval"
+                    style={isTransitioning ? { viewTransitionName: 'hero-slot-time' } : undefined}
+                  >
+                    {slot.startAt}–{slot.endAt}
+                  </strong>
                   <span className="time-slot__duration">60 мин</span>
                 </div>
 

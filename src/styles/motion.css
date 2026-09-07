@@ -1,0 +1,276 @@
+/* ==========================================================================
+   MOTION DESIGN SYSTEM TOKENS & UTILITIES
+   Zhelezny Ryrik Athletic Motion System
+   ========================================================================== */
+
+:root {
+  /* ------------------------------------------------------------------------
+     A. Motion Durations
+     ------------------------------------------------------------------------ */
+  --motion-duration-micro-fast: 90ms;   /* Direct touch, press down */
+  --motion-duration-micro: 120ms;        /* Checkbox, radio toggle, icon shifts */
+  --motion-duration-ui-fast: 180ms;      /* Capacity segments, chip highlight */
+  --motion-duration-ui: 220ms;           /* Tab indicator, accordion toggle */
+  --motion-duration-page-fast: 280ms;    /* Sheet slide up, dialog card */
+  --motion-duration-page: 340ms;         /* Route change, shared element morph */
+  --motion-duration-reveal-fast: 380ms;  /* SVG chart path draw */
+  --motion-duration-reveal: 480ms;       /* Hero metric assembly, success resolve */
+  --motion-duration-loop: 900ms;         /* Indeterminate progress only */
+
+  /* ------------------------------------------------------------------------
+     B. Athletic Easing Curves (Fast onset, controlled braking, zero bounce)
+     ------------------------------------------------------------------------ */
+  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --motion-ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --motion-ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-direct: cubic-bezier(0.25, 1, 0.5, 1);
+
+  /* ------------------------------------------------------------------------
+     C. Interaction Transforms & Physics
+     ------------------------------------------------------------------------ */
+  --motion-press-scale: scale(0.975);
+  --motion-card-press-scale: scale(0.985);
+}
+
+/* --------------------------------------------------------------------------
+   D. View Transitions API Foundations & Shared Groups
+   -------------------------------------------------------------------------- */
+::view-transition-group(root) {
+  animation-duration: var(--motion-duration-page);
+  animation-timing-function: var(--motion-ease-emphasized);
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--motion-duration-ui);
+  animation-timing-function: var(--motion-ease-standard);
+}
+
+/* Shared element transition: Schedule Slot Time -> Booking Hero Time */
+::view-transition-group(hero-slot-time) {
+  animation-duration: var(--motion-duration-page);
+  animation-timing-function: var(--motion-ease-emphasized);
+}
+
+::view-transition-old(hero-slot-time),
+::view-transition-new(hero-slot-time) {
+  height: 100%;
+  width: 100%;
+}
+
+/* Shared element transition: Trainer Avatar & Name */
+::view-transition-group(trainer-avatar-dima),
+::view-transition-group(trainer-avatar-vanya),
+::view-transition-group(trainer-name-dima),
+::view-transition-group(trainer-name-vanya) {
+  animation-duration: var(--motion-duration-page);
+  animation-timing-function: var(--motion-ease-emphasized);
+}
+
+/* --------------------------------------------------------------------------
+   F. Shared Micro Interaction Utilities
+   -------------------------------------------------------------------------- */
+
+/* Direct physical feedback on tap/click for mobile cards and buttons */
+.motion-pressable {
+  transition: transform var(--motion-duration-micro-fast) var(--motion-ease-direct),
+              background-color var(--motion-duration-micro) var(--motion-ease-standard),
+              border-color var(--motion-duration-micro) var(--motion-ease-standard);
+}
+
+.motion-pressable:active:not(:disabled) {
+  transform: var(--motion-card-press-scale);
+}
+
+/* Smooth surface updates (hover/active/selection) */
+.motion-surface {
+  transition: background-color var(--motion-duration-ui-fast) var(--motion-ease-standard),
+              border-color var(--motion-duration-ui-fast) var(--motion-ease-standard),
+              color var(--motion-duration-ui-fast) var(--motion-ease-standard);
+}
+
+/* Number display smoothing */
+.motion-tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   G. Booking Confirmation State Transformation
+   -------------------------------------------------------------------------- */
+.button--submitting {
+  position: relative;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--brand-yellow) !important;
+  color: #0A0D10 !important;
+  transform: var(--motion-press-scale);
+  transition: transform var(--motion-duration-micro-fast) var(--motion-ease-direct) !important;
+}
+
+.button--submitting::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: buttonProcessingSweep var(--motion-duration-loop) linear infinite;
+}
+
+@keyframes buttonProcessingSweep {
+  to { transform: translateX(100%); }
+}
+
+.button--confirmed {
+  background: var(--brand-yellow) !important;
+  color: #0A0D10 !important;
+  font-weight: 750 !important;
+  pointer-events: none;
+  transform: none !important;
+  transition: background-color var(--motion-duration-ui-fast) var(--motion-ease-standard),
+              color var(--motion-duration-ui-fast) var(--motion-ease-standard) !important;
+}
+
+/* --------------------------------------------------------------------------
+   H. Bottom Nav Active Indicator
+   -------------------------------------------------------------------------- */
+.mobile-nav__indicator {
+  position: absolute;
+  top: 0;
+  left: 6px;
+  width: calc((100% - 12px) / 5);
+  height: 2px;
+  background: var(--brand-yellow);
+  border-radius: 1px;
+  transition: transform var(--motion-duration-ui) var(--motion-ease-emphasized);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* --------------------------------------------------------------------------
+   I. Modal Vertical Restrained Reveal
+   -------------------------------------------------------------------------- */
+@keyframes modalBackdropEnter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalContentEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-backdrop {
+  animation: modalBackdropEnter var(--motion-duration-page-fast) var(--motion-ease-enter) forwards;
+}
+
+.modal,
+.modal-content {
+  animation: modalContentEnter var(--motion-duration-page-fast) var(--motion-ease-emphasized) forwards;
+}
+
+@keyframes guideFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.line-chart__guide {
+  stroke: rgba(255, 255, 255, 0.25);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  pointer-events: none;
+  animation: guideFadeIn var(--motion-duration-micro) var(--motion-ease-enter) forwards;
+}
+
+@keyframes syncBarSweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.source-item--syncing {
+  position: relative;
+  overflow: hidden;
+}
+
+.source-item__sync-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--brand-yellow), transparent);
+  animation: syncBarSweep var(--motion-duration-loop) linear infinite;
+  pointer-events: none;
+}
+
+@keyframes timeDigitFlip {
+  from {
+    opacity: 0.35;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.time-digit-flip {
+  display: inline-block;
+  animation: timeDigitFlip var(--motion-duration-ui-fast) var(--motion-ease-enter);
+  will-change: transform, opacity;
+}
+
+/* --------------------------------------------------------------------------
+   J. Accessibility: prefers-reduced-motion: reduce
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-micro-fast: 0.01ms;
+    --motion-duration-micro: 0.01ms;
+    --motion-duration-ui-fast: 0.01ms;
+    --motion-duration-ui: 0.01ms;
+    --motion-duration-page-fast: 0.01ms;
+    --motion-duration-page: 0.01ms;
+    --motion-duration-reveal-fast: 0.01ms;
+    --motion-duration-reveal: 0.01ms;
+    --motion-duration-loop: 0.01ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+
+  .button--submitting::after,
+  .source-item__sync-bar {
+    display: none !important;
+  }
+
+  .time-digit-flip {
+    animation: none !important;
+  }
+}

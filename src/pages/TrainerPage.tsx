@@ -17,16 +17,32 @@ export function TrainerPage() {
 
   return (
     <div className="page trainer-detail-page">
-      <Link to="/trainers" className="back-link"><ArrowLeft size={19} /> Все тренеры</Link>
+      <Link to="/trainers" viewTransition className="back-link">
+        <ArrowLeft size={19} /> Все тренеры
+      </Link>
       <section className="trainer-hero">
-        <TrainerAvatar trainer={trainer} />
+        <TrainerAvatar
+          trainer={trainer}
+          style={{ viewTransitionName: `trainer-avatar-${trainer.id}` }}
+        />
         <div>
           <p className="eyebrow">Тренер</p>
-          <h1>{trainer.name}</h1>
-          <ul className="tag-list">{trainer.specialties.slice(0, 3).map((item) => <li key={item}>{item}</li>)}</ul>
+          <h1 style={{ viewTransitionName: `trainer-name-${trainer.id}` }}>
+            {trainer.name}
+          </h1>
+          <ul className="tag-list">
+            {trainer.specialties.slice(0, 3).map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
         </div>
       </section>
-      <ButtonLink to={`/schedule?trainer=${trainer.id}`}>Записаться к {trainer.name}</ButtonLink>
+      <ButtonLink
+        to={`/schedule?trainer=${trainer.id}`}
+        viewTransition
+      >
+        Записаться к {trainer.name}
+      </ButtonLink>
       <Card className="trainer-about">
         <SectionHeader title="О тренере" />
         <p>{trainer.about}</p>

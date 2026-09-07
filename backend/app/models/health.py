@@ -39,22 +39,22 @@ class HealthMeasurement(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_str)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     metric_type: Mapped[HealthMetricType] = mapped_column(
-        Enum(HealthMetricType, native_enum=False, values_callable=enum_values), nullable=False
+        Enum(HealthMetricType, native_enum=False, length=40, values_callable=enum_values), nullable=False
     )
     value: Mapped[float] = mapped_column(Float, nullable=False)
     unit: Mapped[HealthUnit] = mapped_column(
-        Enum(HealthUnit, native_enum=False, values_callable=enum_values), nullable=False
+        Enum(HealthUnit, native_enum=False, length=20, values_callable=enum_values), nullable=False
     )
     measured_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
 
     source_provider: Mapped[HealthSourceProvider] = mapped_column(
-        Enum(HealthSourceProvider, native_enum=False, values_callable=enum_values), nullable=False
+        Enum(HealthSourceProvider, native_enum=False, length=40, values_callable=enum_values), nullable=False
     )
     source_device: Mapped[str | None] = mapped_column(String(120), nullable=True)
     source_record_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     source_app: Mapped[str | None] = mapped_column(String(120), nullable=True)
     import_method: Mapped[HealthImportMethod] = mapped_column(
-        Enum(HealthImportMethod, native_enum=False, values_callable=enum_values), nullable=False
+        Enum(HealthImportMethod, native_enum=False, length=40, values_callable=enum_values), nullable=False
     )
     metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -71,10 +71,10 @@ class HealthSyncConnection(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_str)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     provider: Mapped[HealthSourceProvider] = mapped_column(
-        Enum(HealthSourceProvider, native_enum=False, values_callable=enum_values), nullable=False
+        Enum(HealthSourceProvider, native_enum=False, length=40, values_callable=enum_values), nullable=False
     )
     status: Mapped[HealthSyncStatus] = mapped_column(
-        Enum(HealthSyncStatus, native_enum=False, values_callable=enum_values),
+        Enum(HealthSyncStatus, native_enum=False, length=40, values_callable=enum_values),
         default=HealthSyncStatus.DISCONNECTED,
         nullable=False,
     )

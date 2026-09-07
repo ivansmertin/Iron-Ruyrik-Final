@@ -17,71 +17,94 @@ data/                     SQLite database file
 backups/                  timestamped SQLite backups
 ```
 
-## SQLite connection policy
+## SQLite connection policy & lifecycle
 
-Каждое соединение получает:
+Каждое соединение SQLite в приложении конфигурируется с параметрами:
 
 ```sql
 PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys=ON;
 PRAGMA busy_timeout=5000;
+PRAGMA synchronous=FULL;
 ```
 
-`foreign_keys` проверяется integration test-ом. WAL позволяет readers работать параллельно с writer, а `busy_timeout` даёт конкурирующему writer время дождаться текущей короткой транзакции.
+- `journal_mode=WAL`: позволяет concurrent readers не блокировать writer, а writer не блокировать readers.
+- `foreign_keys=ON`: гарантирует ссылочную целостность связей между таблицами на уровне СУБД (проверяется integration test-ами).
+- `busy_timeout=5000`: задаёт таймаут ожидания освобождения базы при конкурентных транзакциях (5 секунд), предотвращая `sqlite3.OperationalError: database is locked`.
+- `synchronous=FULL`: подтверждённые транзакции синхронизируются на диск, чтобы не терять последние бронирования при сбое питания или ОС.
 
-## Booking transaction
+### Database Path Resolution & Docker Volumes
 
-Для SQLite операция создания записи выполняет `BEGIN IMMEDIATE` первым statement. Это получает reserved write lock до чтения текущего состояния. Затем в одной транзакции:
+Путь к базе данных вычисляется централизованно в `app/config.py`:
+- `resolved_database_url`: преобразует относительные пути относительно базовой директории приложения (`backend/`), формирует корректный абсолютный SQLite URL для текущей ОС и поддерживает `:memory:`.
+- **Автосоздание директории**: перед инициализацией движка вызывается `parent.mkdir(parents=True, exist_ok=True)`, что предотвращает ошибки отсутствия каталога `data/`.
+- **Обязательность Docker Volume**: в контейнере SQLite-файл располагается в `/app/data/zhelezny_ryurik.db`. Директории `/app/data` и `/app/backups` объявлены как `VOLUME` в Dockerfile и примонтированы в `docker-compose.yml` (`./data:/app/data`, `./backups:/app/backups`). Без монтирования томов данные зала будут безвозвратно уничтожены при пересоздании контейнера (`docker compose down && docker compose up`).
 
-1. читаются `app_settings`;
-2. проверяется `booking_blocks`;
-3. проверяется занятость выбранного тренера;
-4. загружаются активные пересекающиеся bookings;
-5. sweep-line алгоритм вычисляет пик одновременного присутствия вместе с новой записью;
-6. выполняется INSERT и COMMIT.
+## Startup & Fail-Fast Health Checks
 
-Если пик превышает `gym_capacity`, транзакция откатывается с domain exception, API возвращает HTTP 409 и `GYM_CAPACITY_REACHED`.
+При запуске приложения в асинхронном `lifespan`:
+1. Создаётся SQLAlchemy engine с пулом соединений и настройками SQLite.
+2. Проверяется точное совпадение записей `alembic_version` с packaged Alembic heads. Немигрированная или устаревшая schema останавливает startup.
+3. На время работы удерживается advisory lock, поэтому restore не может выполняться параллельно с backend на Windows или Linux.
+4. При остановке приложения (`shutdown`) sync engine диспозится, закрывая соединения и освобождая lock.
 
-Для PostgreSQL repository сможет заменить SQLite lock на transaction + advisory lock или serializable/row-lock strategy. Service rules, schemas и endpoints при этом не меняются.
+## Bootstrap vs Seed Strategy
 
-## Interval semantics
-
-Все интервалы полуоткрытые: `[start_at, end_at)`. Пересечение существует, если:
-
-```text
-existing.start_at < candidate.end_at
-AND existing.end_at > candidate.start_at
-```
-
-Отменённые записи вместимость и trainer collision не учитывают.
-
-## Timezone
-
-Business timezone: `Europe/Moscow`. API принимает только timezone-aware ISO 8601 datetime. Перед записью значения переводятся в UTC.
-
-SQLite хранит UTC timestamps как `DATETIME`; SQLAlchemy `UTCDateTime` удаляет offset только после перевода в UTC и восстанавливает `tzinfo=UTC` при чтении. Поэтому бизнес-логика не зависит от timezone операционной системы. На границе frontend данные форматируются в `Europe/Moscow`.
+- **`bootstrap.py` (`python -m app.scripts.bootstrap`)**:
+  - Идемпотентный системный бутстрап для production и Docker.
+  - Проверяет и создаёт только обязательные системные настройки (`AppSetting(id=1)`: вместимость зала, шаг слота, окно бронирования).
+  - **НЕ создаёт** тестовых пользователей, демо-клиентов и фиктивных бронирований.
+  - Безопасен для многократного выполнения при каждом запуске контейнера в Docker CMD.
+- **`seed_dev.py` / `seed.py` (`python -m app.scripts.seed_dev`)**:
+  - Предназначен **исключительно** для локальной разработки и ручного тестирования.
+  - Заполняет базу демо-тренерами, тестовым клиентом Алексеем, демо-бронированиями и новостями.
+  - Никогда не запускается в production и исключён из Docker CMD.
 
 ## Migrations
 
-Schema управляется Alembic:
+Schema управляется строго через Alembic:
 
 ```bash
 cd backend
 alembic upgrade head
 ```
 
-`Base.metadata.create_all()` не используется при обычном запуске или production setup. В тестах schema также поднимается Alembic migration-ами.
+- Вектор миграций строго линеен; drift между моделями SQLAlchemy и схемой БД контролируется через `alembic check` (exit code 0 в CI/тестах).
+- `Base.metadata.create_all()` **не используется** ни в production, ни в тестах — схема всегда разворачивается через `alembic upgrade head`.
+- В Docker запуск миграций выполняется автоматически перед стартом сервера: `alembic upgrade head && python -m app.scripts.bootstrap && exec uvicorn ...`.
 
 ## Development auth boundary
 
-Development auth возвращает фиксированный seeded user id из server config. Клиент не передаёт `user_id` в create booking/measurement requests. Admin endpoints используют отдельный фиксированный admin identity и проверяют роль. При `APP_ENV=production` этот механизм отключён.
+Development auth возвращает фиксированный seeded user id из server config. Клиент не передаёт `user_id` в create booking/measurement requests. Admin endpoints используют отдельный фиксированный admin identity и проверяют роль. При `APP_ENV=production` этот механизм отключён (`DEV_AUTH_ENABLED=false`).
 
 ## Backup и restore
 
-`python -m app.scripts.backup` использует `sqlite3.Connection.backup()`, которая создаёт согласованный snapshot активной WAL database. Простое копирование `.db` при работающем приложении не используется.
+### Резервное копирование (`python -m app.scripts.backup`)
+1. Использует официальный SQLite Online Backup API (`sqlite3.Connection.backup()`).
+2. Создаёт консистентный, бинарно целостный snapshot даже при активных транзакциях и WAL-файле.
+3. Имя файла формируется с меткой времени `zhelezny_ryurik_YYYY-MM-DD_HHMMSS.db` в директории `backups/`, исключая перезапись предыдущих бэкапов.
+4. Сразу после создания скрипт проводит валидацию:
+   - `PRAGMA integrity_check` (должен вернуть `ok`);
+   - проверка наличия таблицы `alembic_version` и актуальности ревизии;
+   - подсчёт количества записей в таблицах.
+5. Соединения открываются и закрываются строго с `try ... finally: conn.close()` во избежание блокировок файлов на Windows/Linux.
 
-Восстановление выполняется при остановленном backend: проверить backup, сохранить текущий database file отдельно, заменить файл восстановленной копией и запустить `alembic upgrade head`.
+### Восстановление (`python -m app.scripts.restore <path_to_backup> --confirm`)
+1. Выполняется в режиме cold restore (backend остановлен).
+2. Требует обязательный флаг подтверждения `--confirm` для защиты от случайной перезаписи.
+3. Проводит pre-flight валидацию файла бэкапа (`PRAGMA integrity_check` и проверка `alembic_version`).
+4. Автоматически создаёт WAL-aware предохранительный snapshot текущей базы (`pre_restore_YYYYMMDD_HHMMSS.db`) перед внесением любых изменений.
+5. **Очистка stale WAL**: перед копированием удаляет ассоциированные файлы журнала (`.db-wal` и `.db-shm`), предотвращая воспроизведение устаревших WAL-фреймов поверх восстановленной базы.
+6. Атомарно заменяет целевую БД заранее проверенным staging-файлом и повторно проверяет восстановленный файл.
 
 ## PostgreSQL migration path
 
 Зависимости от dialect изолированы в database setup и transaction policy. Repository API работает через SQLAlchemy expressions, модели не используют SQLite-only JSON/functions, timestamps нормализованы, бизнес-правила находятся в services. При миграции потребуется новый `DATABASE_URL`, PostgreSQL driver и PostgreSQL transaction lock implementation; frontend и service contracts останутся прежними.
+
+## Test infrastructure & database isolation
+
+- **Application Factory**: FastAPI приложение создаётся через фабрику `create_app(settings=..., session_factory=...)` с async lifespan для корректного владения и teardown ресурсов. Экземпляр `app` экспортируется на уровне модуля для ASGI-серверов.
+- **Lazy Database Initialization**: SQLAlchemy `engine` и `sessionmaker` не создаются при импорте модулей. Engine конкретного приложения создаётся при старте lifespan и освобождается при shutdown.
+- **Dependency Injection**: `get_session` и auth dependencies получают session factory и settings из `request.app.state`. Тестовый `create_app` принимает ту же session factory, что используют fixtures; `dependency_overrides` для подмены БД не требуется.
+- **Изоляция dev/prod окружения**: Тесты не обращаются к dev базе данных (`data/zhelezny_ryurik.db`) и не модифицируют её.
+- **Alembic в тестах**: Схема тестовой базы поднимается через программно переданный URL и `alembic upgrade head`, без изменения process environment; модели синхронизированы по типам и длинам полей (`alembic check`).

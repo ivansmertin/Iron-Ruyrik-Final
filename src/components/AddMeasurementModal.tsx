@@ -2,7 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, Loader2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { addManualHealthMeasurement } from '../api/health'
-import { Button } from './ui'
+import { MOTION_FEEDBACK_DELAYS } from '../utils/motion'
+import { Button, Modal } from './ui'
 
 interface AddMeasurementModalProps {
   isOpen: boolean
@@ -41,16 +42,11 @@ export function AddMeasurementModal({ isOpen, onClose }: AddMeasurementModalProp
     }
   }, [isOpen])
 
-  // Escape key handler
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
+    if (!isOpen || !success) return
+    const timer = window.setTimeout(onClose, MOTION_FEEDBACK_DELAYS.success)
+    return () => window.clearTimeout(timer)
+  }, [isOpen, onClose, success])
 
   const mutation = useMutation({
     mutationFn: addManualHealthMeasurement,
@@ -58,9 +54,6 @@ export function AddMeasurementModal({ isOpen, onClose }: AddMeasurementModalProp
       setSuccess(true)
       queryClient.invalidateQueries({ queryKey: ['health-progress'] })
       queryClient.invalidateQueries({ queryKey: ['progress'] })
-      setTimeout(() => {
-        onClose()
-      }, 700)
     },
     onError: (err: Error) => {
       setErrorMessage(err.message || 'Не удалось сохранить замер. Проверьте введённые данные.')
@@ -108,17 +101,13 @@ export function AddMeasurementModal({ isOpen, onClose }: AddMeasurementModalProp
   }
 
   return (
-    <div
-      className="modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="add-measurement-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      titleId="add-measurement-title"
+      className="modal-content health-measurement-modal"
     >
-      <div className="modal-content health-measurement-modal">
-        <div className="modal-header">
+      <div className="modal-header">
           <h3 id="add-measurement-title">Записать замер</h3>
           <button
             type="button"
@@ -238,7 +227,6 @@ export function AddMeasurementModal({ isOpen, onClose }: AddMeasurementModalProp
             </div>
           </form>
         )}
-      </div>
-    </div>
+    </Modal>
   )
 }

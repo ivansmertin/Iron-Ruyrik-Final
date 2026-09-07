@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from fastapi.testclient import TestClient
-
-from app.main import app
 from app.services.news import NewsService
 
 
@@ -30,8 +27,7 @@ def test_news_parser_with_sample_html():
     assert posts[0].image_url == "https://example.com/test.jpg"
 
 
-def test_news_endpoint():
-    client = TestClient(app)
+def test_news_endpoint(client):
     response = client.get("/api/v1/news")
     assert response.status_code == 200
     data = response.json()

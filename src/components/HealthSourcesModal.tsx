@@ -13,7 +13,7 @@ import {
   Watch,
   X,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   connectHealthSource,
   disconnectHealthSource,
@@ -31,12 +31,13 @@ import {
   requestNativeHealthPermissions,
   syncNativeHealth,
 } from '../services/healthBridge'
-import type {
+import {
   BridgeAvailabilityResult,
   HealthSourceProvider,
   PermissionStatusResult,
 } from '../types/health'
-import { Button, Card } from './ui'
+import { haptics } from '../services/haptics'
+import { Button, Card, Modal } from './ui'
 
 interface HealthSourcesModalProps {
   isOpen: boolean
@@ -47,6 +48,8 @@ interface SyncFeedback {
   type: 'success' | 'error' | 'info'
   message: string
 }
+
+const SYNC_FEEDBACK_HOLD_MS = 4500
 
 export function HealthSourcesModal({ isOpen, onClose }: HealthSourcesModalProps) {
   const queryClient = useQueryClient()
@@ -66,7 +69,19 @@ export function HealthSourcesModal({ isOpen, onClose }: HealthSourcesModalProps)
   const [bridgeAvailability, setBridgeAvailability] = useState<BridgeAvailabilityResult | null>(null)
   const [permissionStatus, setPermissionStatus] = useState<PermissionStatusResult | null>(null)
   const [isSyncing, setIsSyncing] = useState<HealthSourceProvider | null>(null)
+  const [recentlySyncedProvider, setRecentlySyncedProvider] = useState<HealthSourceProvider | null>(null)
   const [syncFeedback, setSyncFeedback] = useState<SyncFeedback | null>(null)
+  const syncInFlightRef = useRef(false)
+  const syncedFeedbackTimerRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (syncedFeedbackTimerRef.current !== null) {
+        window.clearTimeout(syncedFeedbackTimerRef.current)
+      }
+      syncInFlightRef.current = false
+    }
+  }, [])
 
   // Load platform & permission diagnosis when modal opens
   useEffect(() => {
@@ -193,8 +208,16 @@ export function HealthSourcesModal({ isOpen, onClose }: HealthSourcesModalProps)
   }
 
   const handleManualSync = async (provider: HealthSourceProvider) => {
+    if (syncInFlightRef.current) return
+    syncInFlightRef.current = true
+    if (syncedFeedbackTimerRef.current !== null) {
+      window.clearTimeout(syncedFeedbackTimerRef.current)
+      syncedFeedbackTimerRef.current = null
+    }
     setIsSyncing(provider)
+    setRecentlySyncedProvider(null)
     setSyncFeedback(null)
+    void haptics.light()
 
     try {
       const result = await syncNativeHealth({ provider, sinceDays: 90 })
@@ -210,10 +233,18 @@ export function HealthSourcesModal({ isOpen, onClose }: HealthSourcesModalProps)
           : 'Новых измерений за последние 90 дней не обнаружено в приложении здоровья.'
 
       setSyncFeedback({ type: 'success', message: msg })
+      setRecentlySyncedProvider(provider)
+      void haptics.success()
+      syncedFeedbackTimerRef.current = window.setTimeout(() => {
+        setRecentlySyncedProvider((current) => current === provider ? null : current)
+        syncedFeedbackTimerRef.current = null
+      }, SYNC_FEEDBACK_HOLD_MS)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       setSyncFeedback({ type: 'error', message: msg })
+      void haptics.warning()
     } finally {
+      syncInFlightRef.current = false
       setIsSyncing(null)
     }
   }
@@ -241,17 +272,13 @@ export function HealthSourcesModal({ isOpen, onClose }: HealthSourcesModalProps)
   const serviceSources = (sources || []).filter((s) => s.category === 'service')
 
   return (
-    <div
-      className="modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="health-sources-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      titleId="health-sources-title"
+      className="modal-content health-sources-modal"
     >
-      <div className="modal-content health-sources-modal">
-        <div className="modal-header">
+      <div className="modal-header">
           <div>
             <h3 id="health-sources-title">Источники данных</h3>
             <p className="modal-subtitle">Подключение умных устройств и фитнес-сервисов</p>
@@ -412,18 +439,31 @@ export function HealthSourcesModal({ isOpen, onClose }: HealthSourcesModalProps)
                 {deviceSources.map((source) => {
                   const isConnected = source.status === 'connected'
                   const isSyncingCurrent = isSyncing === source.provider
+                  const isRecentlySynced = recentlySyncedProvider === source.provider
                   const hasPartialPermissions =
                     permissionStatus?.status === 'partially_authorized'
 
                   return (
-                    <Card key={source.id} className="source-item">
+                    <Card
+                      key={source.id}
+                      className={`source-item motion-pressable ${
+                        isSyncingCurrent ? 'source-item--syncing' : ''
+                      }`}
+                    >
+                      {isSyncingCurrent && (
+                        <div className="source-item__sync-bar" aria-hidden="true" />
+                      )}
                       <div className="source-item__icon-wrap">
                         <Smartphone size={22} />
                       </div>
                       <div className="source-item__info">
                         <strong>{source.displayName}</strong>
-                        <span>
-                          {isConnected
+                        <span className={isRecentlySynced ? 'source-item__synced-note' : ''}>
+                          {isSyncingCurrent
+                            ? 'Синхронизация…'
+                            : isRecentlySynced
+                            ? 'Обновлено только что'
+                            : isConnected
                             ? 'Синхронизация активна'
                             : 'Весы Xiaomi, Withings, Apple Watch, Samsung'}
                         </span>
@@ -456,7 +496,7 @@ export function HealthSourcesModal({ isOpen, onClose }: HealthSourcesModalProps)
                                 style={{ width: '28px', height: '28px', padding: 0 }}
                                 title="Синхронизировать сейчас"
                                 onClick={() => handleManualSync(source.provider)}
-                                disabled={isSyncingCurrent}
+                                disabled={isSyncing !== null}
                               >
                                 <RefreshCw
                                   size={14}
@@ -556,7 +596,6 @@ export function HealthSourcesModal({ isOpen, onClose }: HealthSourcesModalProps)
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </Modal>
   )
 }

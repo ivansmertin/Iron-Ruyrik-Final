@@ -9,15 +9,17 @@ import {
   UsersRound,
   X,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { cancelBooking, createBooking, getBookings } from '../api/bookings'
 import { getScheduleData } from '../api/schedule'
 import { getTrainers } from '../api/trainers'
-import { Button, ButtonLink, Card, LoadingPage } from '../components/ui'
+import { Button, ButtonLink, Card, LoadingPage, Modal } from '../components/ui'
 import { useBookings } from '../features/bookings/BookingContext'
 import type { Booking, BookingMode, Trainer } from '../types/domain'
 import { formatDateRu } from '../utils/formatters'
+import { safeStartViewTransition } from '../utils/viewTransitions'
+import { haptics } from '../services/haptics'
 
 function formatWorkoutDate(dateStr?: string, label?: string): string {
   if (!dateStr) return label ?? ''
@@ -61,6 +63,18 @@ export function BookingPage() {
 
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [createdBooking, setCreatedBooking] = useState<Booking | null>(null)
+  const isMountedRef = useRef(true)
+  const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      if (confirmTimeoutRef.current) {
+        clearTimeout(confirmTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const existingBooking =
     bookingsQuery.data?.find((b) => b.id === id || b.slotId === id) ??
@@ -75,11 +89,8 @@ export function BookingPage() {
     existingBooking?.trainerId ??
     (suggestedTrainer === 'dima' || suggestedTrainer === 'vanya' ? suggestedTrainer : 'self')
   const [mode, setMode] = useState<BookingMode>(initialMode)
-  const [successBooking, setSuccessBooking] = useState<Booking | null>(null)
-
-  useEffect(() => {
-    setSuccessBooking(null)
-  }, [id])
+  type ConfirmPhase = 'idle' | 'submitting' | 'confirmed'
+  const [confirmPhase, setConfirmPhase] = useState<ConfirmPhase>('idle')
 
   const refresh = async () =>
     Promise.all([
@@ -91,21 +102,43 @@ export function BookingPage() {
 
   const createMutation = useMutation({
     mutationFn: () => createBooking(slot!, mode),
-    onSuccess: async (booking) => {
-      setSuccessBooking(booking)
-      setCreatedBooking(booking)
-      queryClient.setQueryData<Booking[]>(['bookings'], (old) => {
-        if (!old) return [booking]
-        return [booking, ...old.filter((b) => b.id !== booking.id)]
-      })
-      showNotice('Тренировка записана')
-      await refresh()
+    onSuccess: (booking) => {
+      void haptics.success()
+
+      // Resolve micro-phase: Show confirmation state briefly (~350ms)
+      // before committing query cache and transitioning into confirmed details view.
+      if (isMountedRef.current) {
+        setConfirmPhase('confirmed')
+        confirmTimeoutRef.current = setTimeout(() => {
+          queryClient.setQueryData<Booking[]>(['bookings'], (old) => {
+            if (!old) return [booking]
+            return [booking, ...old.filter((b) => b.id !== booking.id)]
+          })
+          void refresh()
+          if (isMountedRef.current) {
+            safeStartViewTransition(() => {
+              setCreatedBooking(booking)
+              setConfirmPhase('idle')
+            })
+          }
+        }, 350)
+      }
+    },
+    onError: () => {
+      setConfirmPhase('idle')
     },
   })
+
+  const handleConfirm = () => {
+    if (!slot || confirmPhase !== 'idle') return
+    setConfirmPhase('submitting')
+    createMutation.mutate()
+  }
 
   const cancelMutation = useMutation({
     mutationFn: () => cancelBooking(existingBooking!.id),
     onSuccess: async (cancelledBooking) => {
+      void haptics.warning()
       showNotice('Запись отменена')
       setShowCancelModal(false)
       if (cancelledBooking) {
@@ -144,67 +177,8 @@ export function BookingPage() {
     )
   }
 
-  // --- Success view after new booking creation ---
-  if (successBooking) {
-    return (
-      <div
-        className="page training-details-page"
-        aria-label={`Запись оформлена: ${successBooking.title}, ${successBooking.dateLabel} с ${successBooking.startAt} до ${successBooking.endAt}`}
-      >
-        <div className="training-details__status-wrap">
-          <span className="training-details__status training-details__status--confirmed">
-            <CheckCircle2 size={13} aria-hidden="true" />
-            <span>Запись оформлена</span>
-          </span>
-        </div>
-
-        <header className="training-details__header">
-          <p className="training-details__date">{successBooking.dateLabel}</p>
-          <h1
-            className="training-details__time"
-            aria-label={`Время: с ${successBooking.startAt} до ${successBooking.endAt}`}
-          >
-            {successBooking.startAt}–{successBooking.endAt}
-          </h1>
-        </header>
-
-        <div className="training-details__info">
-          <h2 className="training-details__title">{successBooking.title}</h2>
-          <p className="training-details__meta">
-            {successBooking.trainerName
-              ? `С тренером ${successBooking.trainerName} · 60 мин`
-              : 'Самостоятельно · 60 мин'}
-          </p>
-        </div>
-
-        <div className="training-details__divider" role="separator" />
-
-        <div className="booking-actions">
-          <ButtonLink
-            to={`/booking/${successBooking.id}`}
-            replace
-            variant="primary"
-            className="booking-submit-btn"
-            onClick={() => {
-              setSuccessBooking(null)
-            }}
-          >
-            Открыть детали тренировки
-          </ButtonLink>
-          <ButtonLink
-            to="/schedule"
-            variant="secondary"
-            className="booking-submit-btn"
-          >
-            К расписанию
-          </ButtonLink>
-        </div>
-      </div>
-    )
-  }
-
   // --- CONFIRMED / EXISTING BOOKING DETAILS VIEW ---
-  if (existingBooking) {
+  if (existingBooking && confirmPhase !== 'confirmed') {
     const isCancelled = displayedBooking?.status === 'cancelled'
 
     // Compute timing and past status
@@ -230,7 +204,13 @@ export function BookingPage() {
         className="page training-details-page"
         aria-label={`Подтвержденная тренировка: ${existingBooking.title}, ${trainerMeta}, ${formattedDate} с ${existingBooking.startAt} до ${existingBooking.endAt}`}
       >
-        <Link to="/schedule" className="back-link" aria-label="Вернуться к расписанию">
+        <Link
+          to="/schedule"
+          state={{ fromSlotId: slotId }}
+          viewTransition
+          className="back-link"
+          aria-label="Вернуться к расписанию"
+        >
           <ArrowLeft size={18} aria-hidden="true" />
           <span>К расписанию</span>
         </Link>
@@ -261,6 +241,7 @@ export function BookingPage() {
           <p className="training-details__date">{formattedDate}</p>
           <h1
             className="training-details__time"
+            style={{ viewTransitionName: 'hero-slot-time' }}
             aria-label={`Время: с ${existingBooking.startAt} до ${existingBooking.endAt}`}
           >
             {existingBooking.startAt}–{existingBooking.endAt}
@@ -360,48 +341,39 @@ export function BookingPage() {
         </section>
 
         {/* Confirmation Modal */}
-        {showCancelModal && (
-          <div
-            className="modal-backdrop"
-            role="presentation"
-            onClick={() => setShowCancelModal(false)}
-          >
-            <div
-              className="modal cancel-confirm-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="cancel-dialog-title"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h2 id="cancel-dialog-title">Отменить запись?</h2>
-              <p className="cancel-confirm-modal__text">
-                Вы уверены, что хотите отменить тренировку{' '}
-                {formatDateRu(existingBooking.date, 'long')} в {existingBooking.startAt}?
-              </p>
+        <Modal
+          isOpen={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          titleId="cancel-dialog-title"
+          className="cancel-confirm-modal"
+        >
+          <h2 id="cancel-dialog-title">Отменить запись?</h2>
+          <p className="cancel-confirm-modal__text">
+            Вы уверены, что хотите отменить тренировку{' '}
+            {formatDateRu(existingBooking.date, 'long')} в {existingBooking.startAt}?
+          </p>
 
-              <div className="cancel-confirm-modal__actions">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setShowCancelModal(false)}
-                >
-                  Оставить запись
-                </Button>
-                <Button
-                  type="button"
-                  className="button button--danger"
-                  disabled={cancelMutation.isPending}
-                  onClick={() => {
-                    cancelMutation.mutate()
-                    setShowCancelModal(false)
-                  }}
-                >
-                  {cancelMutation.isPending ? 'Отменяем…' : 'Отменить запись'}
-                </Button>
-              </div>
-            </div>
+          <div className="cancel-confirm-modal__actions">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowCancelModal(false)}
+            >
+              Оставить запись
+            </Button>
+            <Button
+              type="button"
+              className="button button--danger"
+              disabled={cancelMutation.isPending}
+              onClick={() => {
+                cancelMutation.mutate()
+                setShowCancelModal(false)
+              }}
+            >
+              {cancelMutation.isPending ? 'Отменяем…' : 'Отменить запись'}
+            </Button>
           </div>
-        )}
+        </Modal>
       </div>
     )
   }
@@ -418,7 +390,13 @@ export function BookingPage() {
       className="page training-details-page"
       aria-label={`Запись на тренировку: ${formattedDate} с ${slot!.startAt} до ${slot!.endAt}`}
     >
-      <Link to="/schedule" className="back-link" aria-label="Вернуться к расписанию">
+      <Link
+        to="/schedule"
+        state={{ fromSlotId: slotId }}
+        viewTransition
+        className="back-link"
+        aria-label="Вернуться к расписанию"
+      >
         <ArrowLeft size={18} aria-hidden="true" />
         <span>К расписанию</span>
       </Link>
@@ -433,6 +411,7 @@ export function BookingPage() {
         <p className="training-details__date">{formattedDate}</p>
         <h1
           className="training-details__time"
+          style={{ viewTransitionName: 'hero-slot-time' }}
           aria-label={`Время: с ${slot!.startAt} до ${slot!.endAt}`}
         >
           {slot!.startAt}–{slot!.endAt}
@@ -462,8 +441,11 @@ export function BookingPage() {
                 type="button"
                 role="radio"
                 aria-checked={mode === 'self'}
-                className={`booking-option ${mode === 'self' ? 'is-selected' : ''}`}
-                onClick={() => setMode('self')}
+                className={`booking-option motion-pressable ${mode === 'self' ? 'is-selected' : ''}`}
+                onClick={() => {
+                  setMode('self')
+                  void haptics.selection()
+                }}
               >
                 <div className="booking-option__content">
                   <span className="booking-option__name">Самостоятельно</span>
@@ -483,8 +465,11 @@ export function BookingPage() {
                     type="button"
                     role="radio"
                     aria-checked={isSelected}
-                    className={`booking-option ${isSelected ? 'is-selected' : ''}`}
-                    onClick={() => setMode(trainer.id)}
+                    className={`booking-option motion-pressable ${isSelected ? 'is-selected' : ''}`}
+                    onClick={() => {
+                      setMode(trainer.id)
+                      void haptics.selection()
+                    }}
                   >
                     <div className="booking-option__content">
                       <span className="booking-option__name">{trainer.name}</span>
@@ -509,11 +494,19 @@ export function BookingPage() {
             <Button
               type="button"
               variant="primary"
-              disabled={createMutation.isPending}
-              onClick={() => createMutation.mutate()}
-              className="booking-submit-btn"
+              disabled={confirmPhase !== 'idle'}
+              onClick={handleConfirm}
+              className={`booking-submit-btn ${
+                confirmPhase === 'submitting' ? 'button--submitting' : ''
+              } ${confirmPhase === 'confirmed' ? 'button--confirmed' : ''}`}
             >
-              {createMutation.isPending ? 'Подтверждаем…' : 'Подтвердить запись'}
+              {confirmPhase === 'submitting' ? (
+                <span>Записываем…</span>
+              ) : confirmPhase === 'confirmed' ? (
+                <span>✓ Запись подтверждена</span>
+              ) : (
+                <span>Подтвердить запись</span>
+              )}
             </Button>
           </div>
         </>

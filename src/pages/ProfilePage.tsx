@@ -3,8 +3,9 @@ import { Bell, ChevronRight, LogOut, MapPin, Settings, ShieldCheck, UserRound, W
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { MembershipCard } from '../components/MembershipCard'
-import { Button, Card, LoadingPage, PageHeader, SectionHeader } from '../components/ui'
+import { Button, Divider, LoadingPage, Modal, PageHeader, Section, SectionHeader } from '../components/ui'
 import { getProfileData } from '../api/profile'
+import { haptics } from '../services/haptics'
 
 export function ProfilePage() {
   const { data, isLoading } = useQuery({ queryKey: ['profile'], queryFn: getProfileData })
@@ -31,18 +32,6 @@ export function ProfilePage() {
     }
   }, [])
 
-  // Close modals on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setShowAllHistory(false)
-        setShowLogoutConfirm(false)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
-
   if (isLoading || !data) return <LoadingPage label="Загружаем профиль" />
 
   const isAdmin = data.user.role === 'admin'
@@ -50,6 +39,7 @@ export function ProfilePage() {
 
   const toggleNotifications = () => {
     if (isPushDenied) return
+    void haptics.selection()
     setNotifications((prev) => {
       const next = !prev
       try {
@@ -65,26 +55,32 @@ export function ProfilePage() {
     <div className="page profile-page">
       <PageHeader title="Профиль" />
 
-      {/* 1. User Identity Card (non-editable, no false chevron affordance) */}
-      <Card className="profile-identity" role="region" aria-label={`Профиль: ${data.user.name}, ${data.user.city}`}>
+      {/* 1. User Identity Section (cardless) */}
+      <Section className="profile-identity-section" aria-label={`Профиль: ${data.user.name}, ${data.user.city}`}>
         <div className="profile-avatar" aria-hidden="true">
           <UserRound size={26} />
         </div>
         <div className="profile-identity__info">
+          <span className="eyebrow">СПОРТСМЕН</span>
           <h2>{data.user.name}</h2>
           <span>
             <MapPin size={14} aria-hidden="true" /> {data.user.city}
           </span>
         </div>
-      </Card>
+      </Section>
+
+      <Divider />
 
       {/* 2. Membership Card */}
       <MembershipCard membership={data.membership} />
 
+      <Divider />
+
       {/* 3. Visit History Section (max 3 items on profile screen) */}
-      <section aria-label="История посещений">
+      <Section aria-label="История посещений" className="profile-history-section">
         <SectionHeader
           title="История посещений"
+          eyebrow="ТРЕНИРОВКИ"
           detail={
             data.history.length > 0 ? (
               <button
@@ -100,16 +96,16 @@ export function ProfilePage() {
         />
 
         {data.history.length === 0 ? (
-          <Card className="history-list history-list--empty">
+          <div className="history-list history-list--empty cardless-history-empty">
             <div className="history-empty">
               <p className="history-empty__text">Пока нет посещений</p>
               <Link to="/schedule" className="button button--secondary button--sm">
                 Записаться на тренировку
               </Link>
             </div>
-          </Card>
+          </div>
         ) : (
-          <Card className="history-list" role="region" aria-label="Последние посещения">
+          <div className="history-list cardless-history-list" role="region" aria-label="Последние посещения">
             {visibleHistory.map((item) => (
               <div key={item.id} className="history-row">
                 <div className="history-row__datetime">
@@ -121,75 +117,80 @@ export function ProfilePage() {
                 </span>
               </div>
             ))}
-          </Card>
+          </div>
         )}
-      </section>
+      </Section>
+
+      <Divider />
 
       {/* 4. Settings Section */}
-      <Card className="settings-list" role="region" aria-label="Настройки">
-        {/* Admin panel item ONLY shown to admins */}
-        {isAdmin && (
-          <Link to="/admin" className="settings-row" aria-label="Перейти в админ-панель">
-            <ShieldCheck size={20} aria-hidden="true" />
+      <Section aria-label="Настройки" className="profile-settings-section">
+        <SectionHeader title="Настройки" eyebrow="СИСТЕМА" />
+        <div className="settings-list cardless-settings-list" role="region" aria-label="Настройки">
+          {/* Admin panel item ONLY shown to admins */}
+          {isAdmin && (
+            <Link to="/admin" className="settings-row" aria-label="Перейти в админ-панель">
+              <ShieldCheck size={20} aria-hidden="true" />
+              <span>
+                Админ-панель
+                <small>Управление расписанием и залом</small>
+              </span>
+              <ChevronRight size={19} aria-hidden="true" />
+            </Link>
+          )}
+
+          {/* Notifications toggle row */}
+          <button
+            type="button"
+            className={`settings-row ${isPushDenied ? 'is-disabled' : ''}`}
+            onClick={toggleNotifications}
+            disabled={isPushDenied}
+            role="switch"
+            aria-checked={!isPushDenied && notifications}
+            aria-label={`Уведомления о тренировках, ${
+              isPushDenied ? 'запрещены в настройках устройства' : notifications ? 'включены' : 'выключены'
+            }`}
+          >
+            <Bell size={20} aria-hidden="true" />
             <span>
-              Админ-панель
-              <small>Управление расписанием и залом</small>
+              Уведомления
+              <small>
+                {isPushDenied
+                  ? 'Уведомления запрещены в настройках устройства'
+                  : 'Напоминания о тренировках'}
+              </small>
+            </span>
+            <span
+              className={`switch ${!isPushDenied && notifications ? 'is-on' : ''} ${
+                isPushDenied ? 'is-disabled' : ''
+              }`}
+              aria-hidden="true"
+            />
+          </button>
+
+          {/* Integrations row */}
+          <Link to="/integrations" className="settings-row" aria-label="Подключить фитнес-трекеры и весы">
+            <Watch size={20} aria-hidden="true" />
+            <span>
+              Источники данных
+              <small>Apple Health, Garmin, Xiaomi</small>
             </span>
             <ChevronRight size={19} aria-hidden="true" />
           </Link>
-        )}
 
-        {/* Notifications toggle row */}
-        <button
-          type="button"
-          className={`settings-row ${isPushDenied ? 'is-disabled' : ''}`}
-          onClick={toggleNotifications}
-          disabled={isPushDenied}
-          role="switch"
-          aria-checked={!isPushDenied && notifications}
-          aria-label={`Уведомления о тренировках, ${
-            isPushDenied ? 'запрещены в настройках устройства' : notifications ? 'включены' : 'выключены'
-          }`}
-        >
-          <Bell size={20} aria-hidden="true" />
-          <span>
-            Уведомления
-            <small>
-              {isPushDenied
-                ? 'Уведомления запрещены в настройках устройства'
-                : 'Напоминания о тренировках'}
-            </small>
-          </span>
-          <span
-            className={`switch ${!isPushDenied && notifications ? 'is-on' : ''} ${
-              isPushDenied ? 'is-disabled' : ''
-            }`}
-            aria-hidden="true"
-          />
-        </button>
-
-        {/* Integrations row */}
-        <Link to="/integrations" className="settings-row" aria-label="Подключить фитнес-трекеры и весы">
-          <Watch size={20} aria-hidden="true" />
-          <span>
-            Источники данных
-            <small>Apple Health, Garmin, Xiaomi</small>
-          </span>
-          <ChevronRight size={19} aria-hidden="true" />
-        </Link>
-
-        {/* Application settings row */}
-        <button
-          type="button"
-          className="settings-row"
-          onClick={() => setMessage('Приложение «Железный Рюрик» · Версия 0.1.0 · Великий Новгород')}
-          aria-label="Открыть настройки приложения"
-        >
-          <Settings size={20} aria-hidden="true" />
-          <span>Настройки</span>
-          <ChevronRight size={19} aria-hidden="true" />
-        </button>
-      </Card>
+          {/* Application settings row */}
+          <button
+            type="button"
+            className="settings-row motion-pressable"
+            onClick={() => setMessage('Приложение «Железный Рюрик» · Версия 0.1.0 · Великий Новгород')}
+            aria-label="Открыть настройки приложения"
+          >
+            <Settings size={20} aria-hidden="true" />
+            <span>Настройки</span>
+            <ChevronRight size={19} aria-hidden="true" />
+          </button>
+        </div>
+      </Section>
 
       {message && (
         <p className="inline-note" role="status">
@@ -200,8 +201,11 @@ export function ProfilePage() {
       {/* 5. Logout Button (Semantic destructive, visually separated) */}
       <Button
         variant="ghost"
-        className="logout-button"
-        onClick={() => setShowLogoutConfirm(true)}
+        className="logout-button motion-pressable"
+        onClick={() => {
+          void haptics.warning()
+          setShowLogoutConfirm(true)
+        }}
         aria-label="Выйти из аккаунта"
       >
         <LogOut size={18} aria-hidden="true" />
@@ -209,77 +213,67 @@ export function ProfilePage() {
       </Button>
 
       {/* Full History Modal */}
-      {showAllHistory && (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="history-modal-title"
-          onClick={() => setShowAllHistory(false)}
-        >
-          <div className="modal history-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="history-modal__header">
-              <h2 id="history-modal-title">Вся история посещений</h2>
-              <button
-                type="button"
-                className="modal__close"
-                onClick={() => setShowAllHistory(false)}
-                aria-label="Закрыть историю"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="history-modal__body">
-              <div className="history-list history-list--modal">
-                {data.history.map((item) => (
-                  <div key={item.id} className="history-row">
-                    <div className="history-row__datetime">
-                      <strong className="history-row__date">{item.dateLabel}</strong>
-                      <span className="history-row__time">{item.time}</span>
-                    </div>
-                    <span className="history-row__trainer">
-                      {item.trainerName ?? 'Самостоятельно'}
-                    </span>
-                  </div>
-                ))}
+      <Modal
+        isOpen={showAllHistory}
+        onClose={() => setShowAllHistory(false)}
+        titleId="history-modal-title"
+        className="history-modal"
+      >
+        <div className="history-modal__header">
+          <h2 id="history-modal-title">Вся история посещений</h2>
+          <button
+            type="button"
+            className="modal__close"
+            onClick={() => setShowAllHistory(false)}
+            aria-label="Закрыть историю"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <div className="history-modal__body">
+          <div className="history-list history-list--modal">
+            {data.history.map((item) => (
+              <div key={item.id} className="history-row">
+                <div className="history-row__datetime">
+                  <strong className="history-row__date">{item.dateLabel}</strong>
+                  <span className="history-row__time">{item.time}</span>
+                </div>
+                <span className="history-row__trainer">
+                  {item.trainerName ?? 'Самостоятельно'}
+                </span>
               </div>
-            </div>
+            ))}
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Logout Confirmation Dialog */}
-      {showLogoutConfirm && (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="logout-dialog-title"
-          onClick={() => setShowLogoutConfirm(false)}
-        >
-          <div className="modal logout-modal" onClick={(e) => e.stopPropagation()}>
-            <h2 id="logout-dialog-title">Выход из аккаунта</h2>
-            <p>Вы действительно хотите выйти из профиля «{data.user.name}»?</p>
-            <div className="logout-modal__actions">
-              <Button
-                variant="secondary"
-                onClick={() => setShowLogoutConfirm(false)}
-              >
-                Отмена
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => {
-                  setShowLogoutConfirm(false)
-                  setMessage('В прототипе вы остаётесь в профиле Алексея')
-                }}
-              >
-                Выйти
-              </Button>
-            </div>
-          </div>
+      <Modal
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        titleId="logout-dialog-title"
+        className="logout-modal"
+      >
+        <h2 id="logout-dialog-title">Выход из аккаунта</h2>
+        <p>Вы действительно хотите выйти из профиля «{data.user.name}»?</p>
+        <div className="logout-modal__actions">
+          <Button
+            variant="secondary"
+            onClick={() => setShowLogoutConfirm(false)}
+          >
+            Отмена
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => {
+              setShowLogoutConfirm(false)
+              setMessage('В прототипе вы остаётесь в профиле Алексея')
+            }}
+          >
+            Выйти
+          </Button>
         </div>
-      )}
+      </Modal>
     </div>
   )
 }

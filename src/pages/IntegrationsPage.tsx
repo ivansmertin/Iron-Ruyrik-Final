@@ -1,7 +1,8 @@
 import { ArrowLeft, Check, RefreshCw, Smartphone, Watch, Zap } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, Card, PageHeader } from '../components/ui'
+import { haptics } from '../services/haptics'
 
 interface IntegrationItem {
   id: string
@@ -34,8 +35,8 @@ const initialIntegrations: IntegrationItem[] = [
   {
     id: 'garmin',
     name: 'Garmin Connect',
-    category: 'Garmin Ecosystem',
-    description: 'Прямой импорт тренировочной нагрузки, вариабельности пульса (HRV) и восстановления Body Battery.',
+    category: 'Спортивные часы',
+    description: 'Импорт треков тренировок, пульсовых зон, VO2 max и времени восстановления.',
     icon: Watch,
     connected: false,
   },
@@ -62,8 +63,18 @@ export function IntegrationsPage() {
 
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null)
+  const syncTimerRef = useRef<number | null>(null)
+  const feedbackTimerRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (syncTimerRef.current !== null) window.clearTimeout(syncTimerRef.current)
+      if (feedbackTimerRef.current !== null) window.clearTimeout(feedbackTimerRef.current)
+    }
+  }, [])
 
   const toggleConnection = (id: string) => {
+    void haptics.selection()
     setIntegrations((prev) => {
       const updated = prev.map((item) => {
         if (item.id === id) {
@@ -86,15 +97,21 @@ export function IntegrationsPage() {
   }
 
   const handleManualSync = () => {
+    void haptics.light()
     setIsSyncing(true)
     setSyncFeedback(null)
-    setTimeout(() => {
+    syncTimerRef.current = window.setTimeout(() => {
       setIsSyncing(false)
       setIntegrations((prev) =>
         prev.map((item) => (item.connected ? { ...item, lastSync: 'Только что' } : item))
       )
       setSyncFeedback('Данные успешно синхронизированы')
-      setTimeout(() => setSyncFeedback(null), 3000)
+      void haptics.success()
+      feedbackTimerRef.current = window.setTimeout(() => {
+        setSyncFeedback(null)
+        feedbackTimerRef.current = null
+      }, 3000)
+      syncTimerRef.current = null
     }, 1200)
   }
 

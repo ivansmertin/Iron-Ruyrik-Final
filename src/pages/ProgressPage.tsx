@@ -8,13 +8,15 @@ import {
   TrendingDown,
   TrendingUp,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getProgressData } from '../api/progress'
 import { AddMeasurementModal } from '../components/AddMeasurementModal'
 import { HealthSourcesModal } from '../components/HealthSourcesModal'
 import { ProgressLineChart } from '../components/ProgressLineChart'
-import { Card, PageHeader, SectionHeader, Skeleton } from '../components/ui'
+import { Divider, HeroMetric, PageHeader, Section, SectionHeader, Skeleton } from '../components/ui'
+import { useCountUp } from '../hooks/useCountUp'
 import { calculateDelta, formatDecimal, pluralize } from '../utils/formatters'
+import { MOTION_DURATIONS } from '../utils/motion'
 
 export function ProgressPage() {
   const [isSourcesOpen, setIsSourcesOpen] = useState(false)
@@ -24,6 +26,38 @@ export function ProgressPage() {
     queryKey: ['health-progress'],
     queryFn: getProgressData,
   })
+
+  const currentWeight =
+    data?.latestWeightSummary?.currentValue ?? data?.measurements?.at(-1)?.weight
+
+  // Retrieve previous known weight from sessionStorage to avoid counting up from 0
+  const [initialWeightVal] = useState<number | undefined>(() => {
+    try {
+      const stored = sessionStorage.getItem('ryrik_last_weight')
+      return stored ? parseFloat(stored) : undefined
+    } catch {
+      return undefined
+    }
+  })
+
+  // Smooth numeric transition ONLY when meaningful value changes
+  // If no previous value (initial session), renders currentWeight directly
+  const animatedWeight = useCountUp(currentWeight ?? 0, {
+    duration: MOTION_DURATIONS.ui,
+    decimals: 1,
+    startVal: initialWeightVal,
+  })
+
+  // Persist latest known weight to sessionStorage
+  useEffect(() => {
+    if (currentWeight !== undefined) {
+      try {
+        sessionStorage.setItem('ryrik_last_weight', String(currentWeight))
+      } catch {
+        // ignore storage errors
+      }
+    }
+  }, [currentWeight])
 
   if (isLoading) {
     return (
@@ -66,7 +100,6 @@ export function ProgressPage() {
   const fatSummary = data.latestBodyFatSummary
   const muscleSummary = data.latestMuscleMassSummary
 
-  const currentWeight = weightSummary?.currentValue ?? latest?.weight
   const weightProvenance = weightSummary?.provenanceLabel ?? latest?.provenanceLabel
 
   // Weight Delta
@@ -118,7 +151,7 @@ export function ProgressPage() {
           <div className="progress-header-actions">
             <button
               type="button"
-              className="progress-action-btn progress-action-btn--sources"
+              className="progress-action-btn progress-action-btn--sources motion-pressable"
               onClick={() => setIsSourcesOpen(true)}
               aria-label="Подключить источники данных здоровья"
               title="Источники данных"
@@ -128,7 +161,7 @@ export function ProgressPage() {
             </button>
             <button
               type="button"
-              className="progress-action-btn progress-action-btn--add"
+              className="progress-action-btn progress-action-btn--add motion-pressable"
               onClick={() => setIsAddOpen(true)}
               aria-label="Записать новый замер"
               title="Записать замер"
@@ -140,46 +173,61 @@ export function ProgressPage() {
         }
       />
 
-      {/* Top summary stats */}
-      <div className="progress-summary">
-        <Card className="summary-stat">
-          <CalendarCheck2 size={22} className="summary-stat__icon" aria-hidden="true" />
-          <strong>{data.visitsThisMonth}</strong>
-          <span>{visitsPlural} за месяц</span>
-        </Card>
+      {/* Top summary stats - cardless metric columns */}
+      <Section className="progress-summary-section" aria-label="Сводка активности">
+        <div className="progress-summary-grid">
+          <div className="summary-stat-block">
+            <span className="eyebrow">ТРЕНИРОВКИ</span>
+            <div className="summary-stat-block__value-row">
+              <CalendarCheck2 size={18} className="summary-stat__icon" aria-hidden="true" />
+              <strong>{data.visitsThisMonth}</strong>
+            </div>
+            <span>{visitsPlural} за месяц</span>
+          </div>
 
-        <Card className="summary-stat">
-          <Activity size={22} className="summary-stat__icon" aria-hidden="true" />
-          <strong>{data.consistentWeeks}</strong>
-          <span>{weeksPlural} подряд</span>
-        </Card>
-      </div>
+          <Divider orientation="vertical" />
 
-      {/* Weight Hero Card */}
+          <div className="summary-stat-block">
+            <span className="eyebrow">ДИСЦИПЛИНА</span>
+            <div className="summary-stat-block__value-row">
+              <Activity size={18} className="summary-stat__icon" aria-hidden="true" />
+              <strong>{data.consistentWeeks}</strong>
+            </div>
+            <span>{weeksPlural} подряд</span>
+          </div>
+        </div>
+      </Section>
+
+      <Divider />
+
+      {/* Weight Hero Section - cardless athletic typography */}
       {currentWeight !== undefined ? (
-        <Card
-          className="weight-card"
+        <Section
+          className="progress-weight-section"
           aria-label={`Текущий вес ${formatDecimal(currentWeight, 1)} кг${
             weightDelta ? `, изменение ${weightDelta.label}` : ''
           }`}
         >
-          <SectionHeader
-            title="Вес"
-            detail={
-              weightDelta ? (
-                <span className="metric-change" title={weightDelta.label} aria-label={weightDelta.label}>
-                  {weightDelta.direction === 'down' && <TrendingDown size={15} aria-hidden="true" />}
-                  {weightDelta.direction === 'up' && <TrendingUp size={15} aria-hidden="true" />}
-                  <span>{weightDelta.formatted}</span>
-                </span>
-              ) : undefined
-            }
-          />
-
-          <div className="weight-card__value">
-            <strong>{formatDecimal(currentWeight, 1)}</strong>
-            <span>кг</span>
+          <div className="progress-weight-header">
+            <span className="eyebrow">ТЕКУЩИЙ ВЕС</span>
+            {weightDelta && (
+              <span
+                className="metric-change"
+                title={weightDelta.label}
+                aria-label={weightDelta.label}
+              >
+                {weightDelta.direction === 'down' && <TrendingDown size={14} aria-hidden="true" />}
+                {weightDelta.direction === 'up' && <TrendingUp size={14} aria-hidden="true" />}
+                <span>{weightDelta.formatted}</span>
+              </span>
+            )}
           </div>
+
+          <HeroMetric
+            value={formatDecimal(animatedWeight, 1)}
+            unit="кг"
+            className="progress-weight-hero"
+          />
 
           {weightProvenance && (
             <p className="metric-provenance" aria-label={`Источник: ${weightProvenance}`}>
@@ -188,9 +236,9 @@ export function ProgressPage() {
           )}
 
           <ProgressLineChart measurements={measurements} />
-        </Card>
+        </Section>
       ) : (
-        <div className="schedule-state-card schedule-state-card--empty" role="status">
+        <div className="schedule-state-card schedule-state-card--empty motion-surface" role="status">
           <Activity size={32} className="schedule-state-card__icon" aria-hidden="true" />
           <h3 className="schedule-state-card__title">Пока нет данных о весе</h3>
           <p className="schedule-state-card__text">
@@ -207,62 +255,68 @@ export function ProgressPage() {
         </div>
       )}
 
-      {/* Other Metrics Section */}
+      <Divider />
+
+      {/* Other Metrics Section - cardless rows */}
       {(currentBodyFat !== undefined || currentMuscleMass !== undefined) && (
-        <section aria-label="Дополнительные показатели">
-          <SectionHeader title="Показатели" />
-          <div className="metric-list">
+        <Section aria-label="Дополнительные показатели" className="progress-metrics-section">
+          <SectionHeader title="Показатели" eyebrow="СОСТАВ ТЕЛА" />
+          <div className="cardless-metric-list">
             {currentBodyFat !== undefined && (
-              <Card
-                className="metric-row"
+              <div
+                className="cardless-metric-row"
                 aria-label={`Процент жира ${formatDecimal(currentBodyFat, 1)} %${
                   bodyFatDelta ? `, изменение ${bodyFatDelta.label}` : ''
                 }`}
               >
-                <div className="metric-row__info">
-                  <span>Процент жира</span>
-                  <strong>{formatDecimal(currentBodyFat, 1)} %</strong>
+                <div className="cardless-metric-row__info">
+                  <span className="cardless-metric-row__name">Процент жира</span>
                   {fatProvenance && (
-                    <span className="metric-row__provenance">{fatProvenance}</span>
+                    <span className="cardless-metric-row__provenance">{fatProvenance}</span>
                   )}
                 </div>
 
-                {bodyFatDelta && (
-                  <span className="metric-change" title={bodyFatDelta.label} aria-label={bodyFatDelta.label}>
-                    {bodyFatDelta.direction === 'down' && <TrendingDown size={15} aria-hidden="true" />}
-                    {bodyFatDelta.direction === 'up' && <TrendingUp size={15} aria-hidden="true" />}
-                    <span>{bodyFatDelta.formatted}</span>
-                  </span>
-                )}
-              </Card>
+                <div className="cardless-metric-row__values">
+                  <strong className="cardless-metric-row__val">{formatDecimal(currentBodyFat, 1)} %</strong>
+                  {bodyFatDelta && (
+                    <span className="metric-change" title={bodyFatDelta.label} aria-label={bodyFatDelta.label}>
+                      {bodyFatDelta.direction === 'down' && <TrendingDown size={14} aria-hidden="true" />}
+                      {bodyFatDelta.direction === 'up' && <TrendingUp size={14} aria-hidden="true" />}
+                      <span>{bodyFatDelta.formatted}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
             )}
 
             {currentMuscleMass !== undefined && (
-              <Card
-                className="metric-row"
+              <div
+                className="cardless-metric-row"
                 aria-label={`Мышечная масса ${formatDecimal(currentMuscleMass, 1)} кг${
                   muscleMassDelta ? `, изменение ${muscleMassDelta.label}` : ''
                 }`}
               >
-                <div className="metric-row__info">
-                  <span>Мышечная масса</span>
-                  <strong>{formatDecimal(currentMuscleMass, 1)} кг</strong>
+                <div className="cardless-metric-row__info">
+                  <span className="cardless-metric-row__name">Мышечная масса</span>
                   {muscleProvenance && (
-                    <span className="metric-row__provenance">{muscleProvenance}</span>
+                    <span className="cardless-metric-row__provenance">{muscleProvenance}</span>
                   )}
                 </div>
 
-                {muscleMassDelta && (
-                  <span className="metric-change" title={muscleMassDelta.label} aria-label={muscleMassDelta.label}>
-                    {muscleMassDelta.direction === 'down' && <TrendingDown size={15} aria-hidden="true" />}
-                    {muscleMassDelta.direction === 'up' && <TrendingUp size={15} aria-hidden="true" />}
-                    <span>{muscleMassDelta.formatted}</span>
-                  </span>
-                )}
-              </Card>
+                <div className="cardless-metric-row__values">
+                  <strong className="cardless-metric-row__val">{formatDecimal(currentMuscleMass, 1)} кг</strong>
+                  {muscleMassDelta && (
+                    <span className="metric-change" title={muscleMassDelta.label} aria-label={muscleMassDelta.label}>
+                      {muscleMassDelta.direction === 'down' && <TrendingDown size={14} aria-hidden="true" />}
+                      {muscleMassDelta.direction === 'up' && <TrendingUp size={14} aria-hidden="true" />}
+                      <span>{muscleMassDelta.formatted}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
             )}
           </div>
-        </section>
+        </Section>
       )}
 
       {/* Explanatory note */}

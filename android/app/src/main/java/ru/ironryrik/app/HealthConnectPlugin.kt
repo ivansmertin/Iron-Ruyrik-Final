@@ -28,6 +28,10 @@ import java.time.temporal.ChronoUnit
 @CapacitorPlugin(name = "NativeHealthBridge")
 class HealthConnectPlugin : Plugin() {
 
+    companion object {
+        private const val HEALTH_CONNECT_PROVIDER_PACKAGE = "com.google.android.apps.healthdata"
+    }
+
     private val permissions = setOf(
         HealthPermission.getReadPermission(WeightRecord::class),
         HealthPermission.getReadPermission(BodyFatRecord::class),
@@ -61,12 +65,12 @@ class HealthConnectPlugin : Plugin() {
         when (status) {
             HealthConnectClient.SDK_AVAILABLE -> {
                 ret.put("available", true)
-                ret.put("providerPackage", HealthConnectClient.DEFAULT_PROVIDER_PACKAGE_NAME)
+                ret.put("providerPackage", HEALTH_CONNECT_PROVIDER_PACKAGE)
             }
             HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> {
                 ret.put("available", false)
                 ret.put("updateRequired", true)
-                ret.put("providerPackage", HealthConnectClient.DEFAULT_PROVIDER_PACKAGE_NAME)
+                ret.put("providerPackage", HEALTH_CONNECT_PROVIDER_PACKAGE)
             }
             else -> {
                 ret.put("available", false)
@@ -126,7 +130,7 @@ class HealthConnectPlugin : Plugin() {
     }
 
     @PluginMethod
-    fun requestPermissions(call: PluginCall) {
+    override fun requestPermissions(call: PluginCall) {
         val ctx = context
         if (ctx == null || HealthConnectClient.getSdkStatus(ctx) != HealthConnectClient.SDK_AVAILABLE) {
             call.reject("Health Connect недоступен или требует установки на этом устройстве")

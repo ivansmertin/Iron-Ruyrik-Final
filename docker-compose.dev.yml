@@ -1,0 +1,22 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: zhelezny-ryurik-backend-dev
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./backups:/app/backups
+    environment:
+      - APP_ENV=development
+      - DATABASE_URL=sqlite:////app/data/zhelezny_ryurik.db
+      - BACKUP_DIR=/app/backups
+      - FRONTEND_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174
+      - APP_TIMEZONE=Europe/Moscow
+      - DEV_AUTH_ENABLED=true
+      - DEV_USER_ID=00000000-0000-0000-0000-000000000001
+      - DEV_ADMIN_USER_ID=00000000-0000-0000-0000-000000000002
+      - LOG_LEVEL=DEBUG

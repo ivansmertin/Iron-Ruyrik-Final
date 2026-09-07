@@ -45,14 +45,17 @@ function normalizeSpecialty(tag: string): string {
 export function TrainerAvatar({
   trainer,
   className = '',
+  style,
 }: {
   trainer: Trainer
   className?: string
+  style?: React.CSSProperties
 }) {
   const initial = getInitial(trainer.name)
   return (
     <div
       className={`trainer-avatar trainer-avatar--${trainer.id} ${className}`}
+      style={style}
       aria-label={`Аватар: ${trainer.name}`}
       aria-hidden="true"
     >
@@ -71,13 +74,22 @@ export function TrainerCard({ trainer }: { trainer: Trainer }) {
       {/* 1. Upper informational & profile navigation area */}
       <Link
         to={`/trainers/${trainer.id}`}
-        className="trainer-card__header"
+        viewTransition
+        className="trainer-card__header motion-pressable"
         aria-label={`Открыть профиль тренера ${trainer.name}`}
       >
-        <TrainerAvatar trainer={trainer} />
+        <TrainerAvatar
+          trainer={trainer}
+          style={{ viewTransitionName: `trainer-avatar-${trainer.id}` }}
+        />
         <div className="trainer-card__identity">
           <span className="trainer-card__role">ТРЕНЕР</span>
-          <h2 className="trainer-card__name">{trainer.name}</h2>
+          <h2
+            className="trainer-card__name"
+            style={{ viewTransitionName: `trainer-name-${trainer.id}` }}
+          >
+            {trainer.name}
+          </h2>
         </div>
         <div className="trainer-card__arrow" aria-hidden="true">
           <ChevronRight size={18} strokeWidth={2.5} />
@@ -113,6 +125,7 @@ export function TrainerCard({ trainer }: { trainer: Trainer }) {
       {/* 4. Primary CTA: book with this trainer */}
       <ButtonLink
         to={`/schedule?trainer=${trainer.id}`}
+        viewTransition
         variant="primary"
         className="trainer-card__cta"
         aria-label={`Выбрать время тренировки с ${trainer.name}`}

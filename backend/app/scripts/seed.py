@@ -4,6 +4,7 @@ import uuid
 from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
+from app.config import get_settings
 from app.database import SessionLocal
 from app.enums import BookingStatus, MembershipKind, MembershipStatus, UserRole
 from app.models.entities import (
@@ -24,6 +25,14 @@ def utc(local_date: date, hour: int, minute: int = 0) -> datetime:
 
 
 def seed() -> None:
+    """DEVELOPMENT & TEST ONLY: Seeds demo users, demo trainers, demo slots, and sample bookings.
+
+    WARNING: Do NOT run this script on a live production database with real club members.
+    This script is fully idempotent and safe for repeated local development runs.
+    """
+    if get_settings().app_env != "development":
+        raise RuntimeError("Demo seed is disabled outside the development environment.")
+
     with SessionLocal() as session:
         settings = session.get(AppSetting, 1)
         if settings is None:

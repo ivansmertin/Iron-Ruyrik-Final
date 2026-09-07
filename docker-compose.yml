@@ -9,12 +9,12 @@ services:
       - "127.0.0.1:8000:8000"
     volumes:
       - ./data:/app/data
+      - ./backups:/app/backups
     environment:
-      - APP_ENV=development
-      - DATABASE_URL=sqlite:///../data/zhelezny_ryurik.db
-      - FRONTEND_ORIGINS=http://178.20.44.68,http://localhost:5173
+      - APP_ENV=production
+      - DATABASE_URL=sqlite:////app/data/zhelezny_ryurik.db
+      - BACKUP_DIR=/app/backups
+      - FRONTEND_ORIGINS=http://178.20.44.68
       - APP_TIMEZONE=Europe/Moscow
-      - DEV_AUTH_ENABLED=true
-      - DEV_USER_ID=00000000-0000-0000-0000-000000000001
-      - DEV_ADMIN_USER_ID=00000000-0000-0000-0000-000000000002
+      - DEV_AUTH_ENABLED=false
       - LOG_LEVEL=INFO

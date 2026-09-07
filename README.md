@@ -86,26 +86,59 @@ src/
 
 ## Configuration и временная dev-auth
 
-Скопируйте `.env.example` в `.env`, если нужны нестандартные значения. `DATABASE_URL` задаётся относительным URL, production origins — через `FRONTEND_ORIGINS`.
+Скопируйте `.env.example` в `.env`, если нужны нестандартные значения. `DATABASE_URL` задаётся относительным URL (например, `sqlite:///../data/zhelezny_ryurik.db`), production origins — через `FRONTEND_ORIGINS`.
 
-В development API использует две фиксированные server-side seeded identity: Алексея и администратора. Frontend не передаёт `user_id`. Это только временная граница до собственной production-аутентификации; при `APP_ENV=production` dev-auth не работает и API возвращает `401 AUTH_REQUIRED`.
+В development API использует две фиксированные server-side seeded identity: Алексея и администратора. Frontend не передаёт `user_id`. Это только временная граница до собственной production-аутентификации; при `APP_ENV=production` dev-auth не работает (`DEV_AUTH_ENABLED=false`) и API возвращает `401 AUTH_REQUIRED`.
 
-## Seed, database и backup
+## Seed, Bootstrap, Database и Backup
 
-`python -m app.scripts.seed` безопасно повторяем и не запускается автоматически. Схема меняется только через `python -m alembic upgrade head`; `create_all()` в production path не используется.
+- **Bootstrap**: `python -m app.scripts.bootstrap` создаёт обязательные системные настройки зала (`AppSetting(id=1)`), если они отсутствуют. Безопасен для production и выполняется автоматически при старте Docker-контейнера.
+- **Seed**: `python -m app.scripts.seed_dev` (или `seed.py`) создаёт тестовых клиентов, тренеров и демо-записи. Предназначен **только для локальной разработки** и никогда не выполняется автоматически в production.
+- **Миграции**: Схема меняется только через `python -m alembic upgrade head`; `create_all()` в production path не используется.
 
-Согласованный backup активной WAL database:
+### Резервное копирование (Online Backup)
+
+Создание согласованного снимка активной WAL database без остановки приложения:
 
 ```powershell
 cd backend
 .\.venv\Scripts\python -m app.scripts.backup
 ```
 
-Файл появится в `backups/zhelezny_ryurik_YYYY-MM-DD_HHMMSS.db`. Для восстановления остановите backend, сохраните текущий `data/zhelezny_ryurik.db`, замените его проверенной копией, затем выполните `alembic upgrade head` и запустите API.
+Файл сохраняется в `backups/zhelezny_ryurik_YYYY-MM-DD_HHMMSS.db` с автоматической валидацией `PRAGMA integrity_check` и сверкой ревизии Alembic.
+
+### Восстановление (Safe Restore)
+
+Восстановление выполняется при остановленном сервере:
+
+```powershell
+cd backend
+.\.venv\Scripts\python -m app.scripts.restore ../backups/zhelezny_ryurik_2026-09-07_120000.db --confirm
+```
+
+Скрипт автоматически:
+1. Проверяет целостность файла бэкапа перед восстановлением.
+2. Создаёт WAL-aware аварийный снэпшот текущей базы (`pre_restore_<timestamp>.db`).
+3. Удаляет устаревшие журналы `.db-wal` и `.db-shm` для предотвращения порчи данных при реплее старого WAL.
+4. Атомарно заменяет базу данных заранее проверенным staging-файлом и валидирует результат.
+
+## Запуск в Docker
+
+- **Production**:
+  ```bash
+  docker compose up -d --build
+  ```
+  Использует persistent volumes (`./data:/app/data`, `./backups:/app/backups`), выполняет `alembic upgrade head` и `bootstrap.py`, отключает dev-auth.
+
+- **Development**:
+  ```bash
+  docker compose -f docker-compose.dev.yml up -d --build
+  ```
+  Включает dev-auth и подробное логирование.
 
 ## Production topology
 
-На Linux VPS рекомендуется обслуживать Vite static build и `/api` через Nginx или Caddy. Uvicorn слушает только `127.0.0.1:8000` и не выставляется напрямую в интернет. SQLite-файл и backups должны находиться на постоянном диске с отдельной политикой резервного копирования.
+На Linux VPS рекомендуется обслуживать Vite static build и `/api` через Nginx или Caddy. Uvicorn слушает только `127.0.0.1:8000` и не выставляется напрямую в интернет. Каталоги `data/` и `backups/` должны обязательно монтироваться на постоянный диск сервера с настроенной внешней политикой хранения резервных копий.
 
 ## Следующий этап
 

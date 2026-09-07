@@ -1,7 +1,7 @@
 import { Calendar, TicketCheck } from 'lucide-react'
 import type { Membership } from '../types/domain'
 import { formatDateRu, pluralize } from '../utils/formatters'
-import { Card } from './ui'
+import { Section } from './ui'
 
 interface MembershipCardProps {
   membership: Membership | null
@@ -16,7 +16,7 @@ export function MembershipCard({ membership }: MembershipCardProps) {
 
   if (!hasActiveMembership || !membership) {
     return (
-      <Card className="membership-card membership-card--empty" role="region" aria-label="Статус абонемента">
+      <Section className="membership-card membership-card--empty" role="region" aria-label="Статус абонемента">
         <div className="membership-card__head">
           <div className="membership-card__icon membership-card__icon--muted" aria-hidden="true">
             <TicketCheck size={22} />
@@ -29,7 +29,7 @@ export function MembershipCard({ membership }: MembershipCardProps) {
         <p className="membership-card__empty-text">
           Продлить или приобрести абонемент можно у администратора клуба.
         </p>
-      </Card>
+      </Section>
     )
   }
 
@@ -50,7 +50,7 @@ export function MembershipCard({ membership }: MembershipCardProps) {
       }`
 
   return (
-    <Card className="membership-card" role="region" aria-label={a11yLabel}>
+    <Section className="membership-card" role="region" aria-label={a11yLabel}>
       <div className="membership-card__head">
         <div className="membership-card__icon" aria-hidden="true">
           <TicketCheck size={22} />
@@ -92,6 +92,6 @@ export function MembershipCard({ membership }: MembershipCardProps) {
           <span>Осталось 1 последнее посещение</span>
         </div>
       )}
-    </Card>
+    </Section>
   )
 }

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 import pytest
-from fastapi.testclient import TestClient
+from sqlalchemy import func, select
 
 from app.enums import (
     HealthImportMethod,
@@ -12,7 +12,6 @@ from app.enums import (
     HealthUnit,
     UserRole,
 )
-from app.main import app
 from app.models.health import HealthMeasurement
 from app.schemas.health import (
     BatchHealthImportIn,
@@ -263,9 +262,7 @@ def test_disconnect_preserves_history(session_factory, make_user):
         assert measurements[0].source_provider == HealthSourceProvider.APPLE_HEALTH
 
 
-def test_health_api_endpoints(session_factory, make_user):
-    client = TestClient(app)
-
+def test_health_api_endpoints(client, session_factory):
     # 1. Test GET /api/v1/health/sources
     resp = client.get("/api/v1/health/sources")
     assert resp.status_code == 200
@@ -292,6 +289,8 @@ def test_health_api_endpoints(session_factory, make_user):
     data = resp_add.json()
     assert len(data) == 3
     assert data[0]["sourceProvider"] == "manual"
+    with session_factory() as session:
+        assert session.scalar(select(func.count()).select_from(HealthMeasurement)) == 3
 
     # 3. Test GET /api/v1/health/progress
     resp_prog = client.get("/api/v1/health/progress")
@@ -439,4 +438,3 @@ def test_partial_failure_in_batch(session_factory, make_user):
         assert res.inserted == 2
         assert res.rejected == 1
         assert res.deduplicated == 0
-
