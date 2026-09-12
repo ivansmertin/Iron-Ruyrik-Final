@@ -62,11 +62,30 @@
 /* Shared element transition: Trainer Avatar & Name */
 ::view-transition-group(trainer-avatar-dima),
 ::view-transition-group(trainer-avatar-vanya),
+::view-transition-group(trainer-avatar-sergey),
 ::view-transition-group(trainer-name-dima),
-::view-transition-group(trainer-name-vanya) {
+::view-transition-group(trainer-name-vanya),
+::view-transition-group(trainer-name-sergey) {
   animation-duration: var(--motion-duration-page);
   animation-timing-function: var(--motion-ease-emphasized);
 }
+
+::view-transition-old(trainer-avatar-dima),
+::view-transition-new(trainer-avatar-dima),
+::view-transition-old(trainer-avatar-vanya),
+::view-transition-new(trainer-avatar-vanya),
+::view-transition-old(trainer-avatar-sergey),
+::view-transition-new(trainer-avatar-sergey),
+::view-transition-old(trainer-name-dima),
+::view-transition-new(trainer-name-dima),
+::view-transition-old(trainer-name-vanya),
+::view-transition-new(trainer-name-vanya),
+::view-transition-old(trainer-name-sergey),
+::view-transition-new(trainer-name-sergey) {
+  height: 100%;
+  width: 100%;
+}
+
 
 /* --------------------------------------------------------------------------
    F. Shared Micro Interaction Utilities
@@ -131,8 +150,9 @@
 
 .button--confirmed {
   background: var(--brand-yellow) !important;
-  color: #0A0D10 !important;
-  font-weight: 750 !important;
+  color: #111111 !important;
+  font-weight: 800 !important;
+  opacity: 1 !important;
   pointer-events: none;
   transform: none !important;
   transition: background-color var(--motion-duration-ui-fast) var(--motion-ease-standard),

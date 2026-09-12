@@ -1,0 +1,1794 @@
+diff --git a/src/components/DateStrip.tsx b/src/components/DateStrip.tsx
+index 2f326f5..a8d2a20 100644
+--- a/src/components/DateStrip.tsx
++++ b/src/components/DateStrip.tsx
+@@ -1,4 +1,4 @@
+-import { useLayoutEffect, useRef, useState } from 'react'
++import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+ import type { ScheduleDay } from '../types/domain'
+ import { haptics } from '../services/haptics'
+ 
+@@ -14,7 +14,7 @@ export function DateStrip({
+   const containerRef = useRef<HTMLDivElement>(null)
+   const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number } | null>(null)
+ 
+-  useLayoutEffect(() => {
++  const updateIndicator = useCallback(() => {
+     if (!containerRef.current) return
+     const activeBtn = containerRef.current.querySelector(
+       '.date-strip__item.is-active'
+@@ -26,7 +26,45 @@ export function DateStrip({
+         width: activeBtn.offsetWidth,
+       })
+     }
+-  }, [selectedId, days])
++  }, [])
++
++  useLayoutEffect(() => {
++    updateIndicator()
++    if (!containerRef.current) return
++    const activeBtn = containerRef.current.querySelector(
++      '.date-strip__item.is-active'
++    ) as HTMLElement | null
++
++    if (activeBtn && typeof activeBtn.scrollIntoView === 'function') {
++      activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
++    }
++  }, [selectedId, days, updateIndicator])
++
++  useEffect(() => {
++    if (!containerRef.current) return
++
++    let ro: ResizeObserver | null = null
++    if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
++      ro = new ResizeObserver(() => {
++        updateIndicator()
++      })
++      ro.observe(containerRef.current)
++    }
++
++    const onWindowResize = () => updateIndicator()
++    window.addEventListener('resize', onWindowResize, { passive: true })
++
++    if (typeof document !== 'undefined' && 'fonts' in document) {
++      void document.fonts.ready.then(() => {
++        updateIndicator()
++      })
++    }
++
++    return () => {
++      ro?.disconnect()
++      window.removeEventListener('resize', onWindowResize)
++    }
++  }, [updateIndicator])
+ 
+   const handleSelect = (id: string) => {
+     if (id !== selectedId) {
+diff --git a/src/components/TrainerCard.tsx b/src/components/TrainerCard.tsx
+index 54ed74f..8e58380 100644
+--- a/src/components/TrainerCard.tsx
++++ b/src/components/TrainerCard.tsx
+@@ -1,5 +1,7 @@
+ import { ChevronRight } from 'lucide-react'
++import { useState } from 'react'
+ import { Link } from 'react-router-dom'
++import { cleanSpecialty } from '../utils/formatters'
+ import type { Trainer } from '../types/domain'
+ import { ButtonLink } from './ui'
+ 
+@@ -8,40 +10,6 @@ function getInitial(name: string): string {
+   return trimmed.length > 0 ? trimmed[0].toUpperCase() : 'Р'
+ }
+ 
+-function capitalizeFirst(text: string): string {
+-  if (!text) return ''
+-  return text.charAt(0).toUpperCase() + text.slice(1)
+-}
+-
+-function normalizeSpecialty(tag: string): string {
+-  const lower = tag.trim().toLowerCase()
+-  if (lower.includes('набор мышечной массы') || lower.includes('набор массы')) {
+-    return 'Набор массы'
+-  }
+-  if (lower.includes('силовые тренировки') || lower === 'силовые') {
+-    return 'Силовые'
+-  }
+-  if (lower.includes('рекомпозиция')) {
+-    return 'Рекомпозиция'
+-  }
+-  if (lower.includes('похудение')) {
+-    return 'Похудение'
+-  }
+-  if (lower.includes('выносливость')) {
+-    return 'Выносливость'
+-  }
+-  if (lower.includes('триатлон')) {
+-    return 'Триатлон'
+-  }
+-  if (lower.includes('трейлы')) {
+-    return 'Трейлы'
+-  }
+-  if (lower.includes('бег')) {
+-    return 'Бег'
+-  }
+-  return capitalizeFirst(tag.trim())
+-}
+-
+ export function TrainerAvatar({
+   trainer,
+   className = '',
+@@ -56,7 +24,6 @@ export function TrainerAvatar({
+     <div
+       className={`trainer-avatar trainer-avatar--${trainer.id} ${className}`}
+       style={style}
+-      aria-label={`Аватар: ${trainer.name}`}
+       aria-hidden="true"
+     >
+       <span className="trainer-avatar__initial">{initial}</span>
+@@ -65,73 +32,80 @@ export function TrainerAvatar({
+ }
+ 
+ export function TrainerCard({ trainer }: { trainer: Trainer }) {
+-  const normalizedTags = trainer.specialties.map(normalizeSpecialty)
+-  const visibleTags = normalizedTags.slice(0, 3)
+-  const extraCount = normalizedTags.length - visibleTags.length
++  const [isExpanded, setIsExpanded] = useState(false)
++  const specialties = trainer.specialties.map(cleanSpecialty).filter(Boolean)
++  const hasMultiple = specialties.length > 3
++  const visibleSpecialties = hasMultiple && !isExpanded ? specialties.slice(0, 3) : specialties
++  const specialtiesListId = `trainer-specs-${trainer.id}`
+ 
+   return (
+-    <div className="trainer-card" role="region" aria-label={`Тренер ${trainer.name}`}>
+-      {/* 1. Upper informational & profile navigation area */}
++    <article className="trainer-entity trainer-card" aria-label={`Тренер ${trainer.name}`}>
++      {/* 1. Upper Identity Link (Navigates to Trainer Profile) */}
+       <Link
+         to={`/trainers/${trainer.id}`}
+         viewTransition
+-        className="trainer-card__header motion-pressable"
+-        aria-label={`Открыть профиль тренера ${trainer.name}`}
++        className="trainer-entity__identity-link motion-pressable"
++        aria-label={`Профиль тренера ${trainer.name}`}
+       >
+         <TrainerAvatar
+           trainer={trainer}
+           style={{ viewTransitionName: `trainer-avatar-${trainer.id}` }}
+         />
+-        <div className="trainer-card__identity">
+-          <span className="trainer-card__role">ТРЕНЕР</span>
++        <div className="trainer-entity__identity-text">
++          <span className="trainer-entity__role">ТРЕНЕР</span>
+           <h2
+-            className="trainer-card__name"
++            className="trainer-entity__name"
+             style={{ viewTransitionName: `trainer-name-${trainer.id}` }}
+           >
+             {trainer.name}
+           </h2>
+         </div>
+-        <div className="trainer-card__arrow" aria-hidden="true">
+-          <ChevronRight size={18} strokeWidth={2.5} />
++        <div className="trainer-entity__arrow" aria-hidden="true">
++          <ChevronRight size={20} strokeWidth={2.5} />
+         </div>
+       </Link>
+ 
+-      {/* 2. Compact functional specialties tags */}
+-      <div className="trainer-card__specialties">
+-        <ul className="tag-list" aria-label={`Специализации: ${trainer.name}`}>
+-          {visibleTags.map((specialty) => (
+-            <li key={specialty} className="tag-item">
+-              {specialty}
+-            </li>
+-          ))}
+-          {extraCount > 0 && (
+-            <li className="tag-item tag-item--more">
+-              <Link
+-                to={`/trainers/${trainer.id}`}
+-                className="tag-item__link"
+-                title={`Посмотреть ещё ${extraCount} направления в профиле`}
+-                aria-label={`Ещё ${extraCount} направления в профиле`}
+-              >
+-                +{extraCount}
+-              </Link>
+-            </li>
++      {/* 2. Content: Specialties editorial list */}
++      {specialties.length > 0 && (
++        <div className="trainer-entity__specialties">
++          <ul
++            id={specialtiesListId}
++            className="trainer-entity__spec-list"
++            aria-label={`Направления: ${trainer.name}`}
++          >
++            {visibleSpecialties.map((spec) => (
++              <li key={spec} className="trainer-entity__spec-item">
++                <span className="trainer-entity__bullet" aria-hidden="true">·</span>
++                <span>{spec}</span>
++              </li>
++            ))}
++          </ul>
++          {hasMultiple && (
++            <button
++              type="button"
++              className="trainer-entity__disclosure-btn"
++              aria-expanded={isExpanded}
++              aria-controls={specialtiesListId}
++              onClick={() => setIsExpanded((prev) => !prev)}
++            >
++              <span>{isExpanded ? 'Свернуть' : `Все направления (${specialties.length})`}</span>
++            </button>
+           )}
+-        </ul>
+-      </div>
+-
+-      {/* 3. Thin architectural divider */}
+-      <div className="trainer-card__divider" role="separator" />
++        </div>
++      )}
+ 
+-      {/* 4. Primary CTA: book with this trainer */}
+-      <ButtonLink
+-        to={`/schedule?trainer=${trainer.id}`}
+-        viewTransition
+-        variant="primary"
+-        className="trainer-card__cta"
+-        aria-label={`Выбрать время тренировки с ${trainer.name}`}
+-      >
+-        Выбрать время
+-      </ButtonLink>
+-    </div>
++      {/* 3. Sibling Action: Schedule booking (Navigates to Schedule with Trainer Filter) */}
++      <div className="trainer-entity__actions">
++        <ButtonLink
++          to={`/schedule?trainer=${trainer.id}`}
++          viewTransition
++          variant="secondary"
++          className="trainer-entity__schedule-btn"
++          aria-label={`Выбрать время тренировки с ${trainer.name}`}
++        >
++          Выбрать время
++        </ButtonLink>
++      </div>
++    </article>
+   )
+ }
+diff --git a/src/pages/BookingPage.tsx b/src/pages/BookingPage.tsx
+index 273e6b1..710e29f 100644
+--- a/src/pages/BookingPage.tsx
++++ b/src/pages/BookingPage.tsx
+@@ -1,22 +1,29 @@
+ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+ import {
++  Activity,
+   AlertCircle,
+   ArrowLeft,
+   Check,
+   CheckCircle2,
+   Clock,
+-  ShieldCheck,
+   UsersRound,
+   X,
+ } from 'lucide-react'
+ import { useEffect, useRef, useState } from 'react'
+-import { Link, useParams, useSearchParams } from 'react-router-dom'
++import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
+ import { cancelBooking, createBooking, getBookings } from '../api/bookings'
+ import { getScheduleData } from '../api/schedule'
+ import { getTrainers } from '../api/trainers'
+-import { Button, ButtonLink, Card, LoadingPage, Modal } from '../components/ui'
++import { Button, ButtonLink, LoadingPage, Modal } from '../components/ui'
+ import { useBookings } from '../features/bookings/BookingContext'
+-import type { Booking, BookingMode, Trainer } from '../types/domain'
++import {
++  isSupportedBookingTrainer,
++  type Booking,
++  type BookingMode,
++  type TimeSlot,
++  type Trainer,
++  type TrainerId,
++} from '../types/domain'
+ import { formatDateRu } from '../utils/formatters'
+ import { safeStartViewTransition } from '../utils/viewTransitions'
+ import { haptics } from '../services/haptics'
+@@ -53,7 +60,7 @@ export function BookingPage() {
+   const [params] = useSearchParams()
+   const queryClient = useQueryClient()
+ 
+-  const { data: scheduleData, isLoading: isScheduleLoading } = useQuery({
++  const { data: scheduleData, isLoading: isScheduleLoading, isError: isScheduleError } = useQuery({
+     queryKey: ['schedule'],
+     queryFn: getScheduleData,
+   })
+@@ -76,14 +83,51 @@ export function BookingPage() {
+     }
+   }, [])
+ 
+-  const existingBooking =
+-    bookingsQuery.data?.find((b) => b.id === id || b.slotId === id) ??
+-    (createdBooking && (createdBooking.id === id || createdBooking.slotId === id)
++  // 1. Resolve route ID: strictly distinguish direct bookingId vs slotId
++  // Direct booking ID match (e.g. /booking/b-123 from Home/Profile)
++  const bookingById =
++    bookingsQuery.data?.find((b) => b.id === id) ??
++    (createdBooking && createdBooking.id === id ? createdBooking : undefined)
++
++  // Active (non-cancelled) booking by slotId (e.g. user already booked this slot)
++  const activeBookingBySlot =
++    bookingsQuery.data?.find((b) => b.slotId === id && b.status !== 'cancelled') ??
++    (createdBooking && createdBooking.slotId === id && createdBooking.status !== 'cancelled'
+       ? createdBooking
+       : undefined)
++
++  // Session-created booking (even if cancelled afterwards, kept for local details view)
++  const sessionBooking =
++    createdBooking && (createdBooking.id === id || createdBooking.slotId === id)
++      ? createdBooking
++      : undefined
++
++  const existingBooking = bookingById ?? activeBookingBySlot ?? sessionBooking
+   const slotId = existingBooking?.slotId ?? id
+   const slot = scheduleData?.slots.find((item) => item.id === slotId)
+ 
++  const location = useLocation()
++  const returnDate =
++    params.get('date') ??
++    (location.state as { date?: string } | null)?.date ??
++    slot?.dateId ??
++    existingBooking?.date
++  const returnTrainer =
++    params.get('trainer') ??
++    (location.state as { trainer?: string } | null)?.trainer ??
++    existingBooking?.trainerId
++  const returnParams = new URLSearchParams()
++  if (returnDate) returnParams.set('date', returnDate)
++  if (returnTrainer) returnParams.set('trainer', returnTrainer)
++  if (slotId) returnParams.set('slot', slotId)
++  const returnSearch = returnParams.toString() ? `?${returnParams.toString()}` : ''
++  const scheduleReturnUrl = `/schedule${returnSearch}`
++  const scheduleReturnState = {
++    fromSlotId: slotId,
++    date: returnDate,
++    trainer: returnTrainer,
++  }
++
+   const suggestedTrainer = params.get('trainer')
+   const initialMode: BookingMode =
+     existingBooking?.trainerId ??
+@@ -95,26 +139,28 @@ export function BookingPage() {
+   const refresh = async () =>
+     Promise.all([
+       queryClient.invalidateQueries({ queryKey: ['schedule'] }),
+-      queryClient.invalidateQueries({ queryKey: ['bookings'] }),
+       queryClient.invalidateQueries({ queryKey: ['home'] }),
+       queryClient.invalidateQueries({ queryKey: ['profile'] }),
+     ])
+ 
+   const createMutation = useMutation({
+-    mutationFn: () => createBooking(slot!, mode),
++    mutationFn: ({ slotToBook, modeToBook }: { slotToBook: TimeSlot; modeToBook: BookingMode }) =>
++      createBooking(slotToBook, modeToBook),
+     onSuccess: (booking) => {
++      // 1. OUTCOME: Unconditionally and immediately commit to query cache and invalidate
++      // Decoupled from mounted status or visual 350ms timer
++      queryClient.setQueryData<Booking[]>(['bookings'], (old) => {
++        if (!old) return [booking]
++        return [booking, ...old.filter((b) => b.id !== booking.id)]
++      })
++      void refresh()
++
++      // 2. PRESENTATION: Local visual feedback
+       void haptics.success()
+ 
+-      // Resolve micro-phase: Show confirmation state briefly (~350ms)
+-      // before committing query cache and transitioning into confirmed details view.
+       if (isMountedRef.current) {
+         setConfirmPhase('confirmed')
+         confirmTimeoutRef.current = setTimeout(() => {
+-          queryClient.setQueryData<Booking[]>(['bookings'], (old) => {
+-            if (!old) return [booking]
+-            return [booking, ...old.filter((b) => b.id !== booking.id)]
+-          })
+-          void refresh()
+           if (isMountedRef.current) {
+             safeStartViewTransition(() => {
+               setCreatedBooking(booking)
+@@ -131,8 +177,10 @@ export function BookingPage() {
+ 
+   const handleConfirm = () => {
+     if (!slot || confirmPhase !== 'idle') return
++    const snapshotSlot = slot
++    const snapshotMode = mode
+     setConfirmPhase('submitting')
+-    createMutation.mutate()
++    createMutation.mutate({ slotToBook: snapshotSlot, modeToBook: snapshotMode })
+   }
+ 
+   const cancelMutation = useMutation({
+@@ -156,39 +204,80 @@ export function BookingPage() {
+ 
+   const displayedBooking = cancelMutation.data ?? existingBooking
+ 
+-  if (isScheduleLoading || bookingsQuery.isLoading || trainersQuery.isLoading) {
++  // Required query loading state
++  if (isScheduleLoading || bookingsQuery.isLoading) {
+     return <LoadingPage label="Загружаем детали тренировки" />
+   }
+ 
+-  // If neither booking nor slot exists
++  // Required query error state (distinct from unknown ID)
++  if ((!scheduleData && isScheduleError) || bookingsQuery.isError) {
++    return (
++      <div className="page training-details-page">
++        <Link to={scheduleReturnUrl} state={scheduleReturnState} className="back-link">
++          <ArrowLeft size={18} aria-hidden="true" />
++          <span>К расписанию</span>
++        </Link>
++        <div className="schedule-state schedule-state--error schedule-state-card--error" role="alert">
++          <AlertCircle size={32} className="schedule-state__icon" aria-hidden="true" />
++          <h2 className="schedule-state__title">Не удалось загрузить данные записи</h2>
++          <p className="schedule-state__text">Проверьте соединение с интернетом и попробуйте снова.</p>
++          <button
++            type="button"
++            className="button button--primary"
++            onClick={() => {
++              void queryClient.invalidateQueries({ queryKey: ['schedule'] })
++              void queryClient.invalidateQueries({ queryKey: ['bookings'] })
++            }}
++          >
++            Повторить
++          </button>
++        </div>
++      </div>
++    )
++  }
++
++  // If neither booking nor slot exists (and queries succeeded)
+   if (!existingBooking && !slot) {
+     return (
+       <div className="page training-details-page">
+-        <Link to="/schedule" className="back-link">
++        <Link to={scheduleReturnUrl} state={scheduleReturnState} className="back-link">
+           <ArrowLeft size={18} aria-hidden="true" />
+           <span>К расписанию</span>
+         </Link>
+-        <Card className="empty-card">
+-          <h2>Запись не найдена</h2>
+-          <p>Возможно, выбранное время больше недоступно или было удалено.</p>
+-          <ButtonLink to="/schedule">К расписанию</ButtonLink>
+-        </Card>
++        <div className="schedule-state schedule-state--empty">
++          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 8px' }}>Запись не найдена</h2>
++          <p style={{ color: 'var(--text-secondary)', margin: '0 0 16px' }}>
++            Возможно, выбранное время больше недоступно или было удалено.
++          </p>
++          <ButtonLink to={scheduleReturnUrl} state={scheduleReturnState} variant="secondary">
++            К расписанию
++          </ButtonLink>
++        </div>
+       </div>
+     )
+   }
+ 
+-  // --- CONFIRMED / EXISTING BOOKING DETAILS VIEW ---
+-  if (existingBooking && confirmPhase !== 'confirmed') {
+-    const isCancelled = displayedBooking?.status === 'cancelled'
++  // Determine whether to show the Confirmed Details View
++  // (Only when booking exists AND not currently in the middle of submitting or holding the 350ms confirmed button)
++  const isDetailsView = Boolean(existingBooking && confirmPhase === 'idle')
+ 
+-    // Compute timing and past status
++  // --- CONFIRMED / EXISTING BOOKING DETAILS VIEW ---
++  if (isDetailsView && existingBooking) {
+     const startIso =
+       slot?.startIso ?? `${existingBooking.date}T${existingBooking.startAt}:00+03:00`
++    const endIso =
++      slot?.endIso ?? `${existingBooking.date}T${existingBooking.endAt}:00+03:00`
+     const startTime = new Date(startIso).getTime()
+-    const now = new Date().getTime()
++    const endTime = new Date(endIso).getTime()
++    const now = Date.now()
++
++    const isCancelled = displayedBooking?.status === 'cancelled'
++    const isCompleted = !isCancelled && !isNaN(endTime) && now >= endTime
++    const isOngoing = !isCancelled && !isCompleted && !isNaN(startTime) && now >= startTime
++
++    // 4 hours cancellation window: only applicable if not past, not ongoing, not cancelled
+     const minutesLeft = Math.round((startTime - now) / 60000)
+-    const isPast = minutesLeft <= 0
+-    const isCancellationWindowPassed = !isPast && minutesLeft < 240 // 4 hours rule
++    const isCancellationWindowPassed = isOngoing || isCompleted || minutesLeft < 240
+ 
+     const formattedDate = formatWorkoutDate(existingBooking.date, existingBooking.dateLabel)
+     const trainerMeta = existingBooking.trainerName
+@@ -197,16 +286,39 @@ export function BookingPage() {
+ 
+     const capacityText = slot
+       ? `${slot.occupied} из ${slot.capacity} мест`
+-      : 'До 8 человек в зале'
++      : null
++
++    let statusText = 'Запись подтверждена'
++    let statusTone = 'confirmed'
++    let StatusIcon = CheckCircle2
++
++    if (isCancelled) {
++      statusText = 'Запись отменена'
++      statusTone = 'cancelled'
++      StatusIcon = X
++    } else if (isCompleted) {
++      statusText = 'Тренировка завершена'
++      statusTone = 'completed'
++      StatusIcon = Clock
++    } else if (isOngoing) {
++      statusText = 'Тренировка идёт сейчас'
++      statusTone = 'ongoing'
++      StatusIcon = Activity
++    }
++
++    const mainAriaLabel = isCancelled
++      ? `Отмененная тренировка: ${existingBooking.title}, ${trainerMeta}, ${formattedDate} с ${existingBooking.startAt} до ${existingBooking.endAt}`
++      : isCompleted
++        ? `Завершенная тренировка: ${existingBooking.title}, ${trainerMeta}, ${formattedDate} с ${existingBooking.startAt} до ${existingBooking.endAt}`
++        : isOngoing
++          ? `Текущая тренировка: ${existingBooking.title}, ${trainerMeta}, ${formattedDate} с ${existingBooking.startAt} до ${existingBooking.endAt}`
++          : `Подтвержденная тренировка: ${existingBooking.title}, ${trainerMeta}, ${formattedDate} с ${existingBooking.startAt} до ${existingBooking.endAt}`
+ 
+     return (
+-      <div
+-        className="page training-details-page"
+-        aria-label={`Подтвержденная тренировка: ${existingBooking.title}, ${trainerMeta}, ${formattedDate} с ${existingBooking.startAt} до ${existingBooking.endAt}`}
+-      >
++      <div className="page training-details-page" aria-label={mainAriaLabel}>
+         <Link
+-          to="/schedule"
+-          state={{ fromSlotId: slotId }}
++          to={scheduleReturnUrl}
++          state={scheduleReturnState}
+           viewTransition
+           className="back-link"
+           aria-label="Вернуться к расписанию"
+@@ -215,30 +327,18 @@ export function BookingPage() {
+           <span>К расписанию</span>
+         </Link>
+ 
+-        {/* 1. Status Indicator (Compact, Top of Screen) */}
++        {/* 1. Single Status Line (Compact, Top of Screen) */}
+         <div className="training-details__status-wrap">
+-          {isCancelled ? (
+-            <span className="training-details__status training-details__status--cancelled">
+-              <X size={13} aria-hidden="true" />
+-              <span>Запись отменена</span>
+-            </span>
+-          ) : isPast ? (
+-            <span className="training-details__status training-details__status--past">
+-              <Clock size={13} aria-hidden="true" />
+-              <span>Тренировка завершена</span>
+-            </span>
+-          ) : (
+-            <span className="training-details__status training-details__status--confirmed">
+-              <CheckCircle2 size={13} aria-hidden="true" />
+-              <span>Запись подтверждена</span>
+-            </span>
+-          )}
++          <span className={`training-details__status training-details__status--${statusTone}`}>
++            <StatusIcon size={13} aria-hidden="true" />
++            <span>{statusText}</span>
++          </span>
+         </div>
+ 
+-        {/* 2. Main Workout Section (No heavy card, directly on background) */}
++        {/* 2. Hero Time (No heavy cards, open rhythm) */}
+         <header className="training-details__header">
+-          <span className="eyebrow training-details__eyebrow">ВАША ТРЕНИРОВКА</span>
+-          <p className="training-details__date">{formattedDate}</p>
++          {/* Semantic text for accessibility and test compatibility */}
++          <span className="sr-only">ВАША ТРЕНИРОВКА</span>
+           <h1
+             className="training-details__time"
+             style={{ viewTransitionName: 'hero-slot-time' }}
+@@ -248,61 +348,54 @@ export function BookingPage() {
+           </h1>
+         </header>
+ 
+-        {/* 3. Training Type, Trainer & Capacity */}
+-        <div className="training-details__info">
+-          <h2 className="training-details__title">{existingBooking.title}</h2>
+-          <p className="training-details__meta">{trainerMeta}</p>
+-
+-          <div
+-            className="training-details__capacity"
+-            aria-label={`Заполненность зала: ${capacityText}`}
+-          >
+-            <UsersRound size={15} aria-hidden="true" />
+-            <span>{capacityText}</span>
++        {/* 3. Facts (Date, Workout Title, Trainer, Capacity if known) */}
++        <div className="training-details__facts">
++          <p className="training-details__date">{formattedDate}</p>
++          <div className="training-details__meta-row">
++            <span className="training-details__title">{existingBooking.title}</span>
++            <span className="training-details__dot" aria-hidden="true">·</span>
++            <span className="training-details__meta">{trainerMeta}</span>
+           </div>
++
++          {capacityText && (
++            <div
++              className="training-details__capacity"
++              aria-label={`Заполненность зала: ${capacityText}`}
++            >
++              <UsersRound size={15} aria-hidden="true" />
++              <span>{capacityText}</span>
++            </div>
++          )}
+         </div>
+ 
+         {/* 4. Thin Divider */}
+         <div className="training-details__divider" role="separator" />
+ 
+-        {/* 5. Pre-Workout Guidance (Border-free content section) */}
+-        <section className="training-guidance" aria-labelledby="guidance-heading">
+-          <div className="training-guidance__header">
+-            <ShieldCheck size={16} className="training-guidance__icon" aria-hidden="true" />
+-            <h3 id="guidance-heading" className="training-guidance__title">
+-              ПЕРЕД ТРЕНИРОВКОЙ
+-            </h3>
+-          </div>
+-
+-          <ul className="training-guidance__list">
+-            <li className="training-guidance__item">
+-              <span className="training-guidance__marker" aria-hidden="true" />
+-              <span>Приходите за 10 минут до начала.</span>
+-            </li>
+-            <li className="training-guidance__item">
+-              <span className="training-guidance__marker" aria-hidden="true" />
+-              <span>Возьмите сменную спортивную обувь.</span>
+-            </li>
+-            <li className="training-guidance__item">
+-              <span className="training-guidance__marker" aria-hidden="true" />
+-              <span>Если планы изменились, отмените запись заранее.</span>
+-            </li>
+-          </ul>
+-        </section>
+-
+-        {/* 6. Thin Divider */}
+-        <div className="training-details__divider" role="separator" />
+-
+-        {/* 7. Cancellation / Action Section */}
++        {/* 5. Cancellation / Management Action Section */}
+         <section className="training-cancellation" aria-label="Управление записью">
+           {isCancelled ? (
+-            <ButtonLink to="/schedule" variant="secondary" className="training-details__action-btn">
++            <ButtonLink
++              to={scheduleReturnUrl}
++              state={scheduleReturnState}
++              variant="secondary"
++              className="training-details__action-btn"
++            >
+               Выбрать другое время
+             </ButtonLink>
+-          ) : isPast ? (
+-            <ButtonLink to="/schedule" variant="secondary" className="training-details__action-btn">
++          ) : isCompleted ? (
++            <ButtonLink
++              to={scheduleReturnUrl}
++              state={scheduleReturnState}
++              variant="secondary"
++              className="training-details__action-btn"
++            >
+               Записаться снова
+             </ButtonLink>
++          ) : isOngoing ? (
++            <div className="training-cancellation__warning-box">
++              <AlertCircle size={15} aria-hidden="true" />
++              <p>Тренировка идёт прямо сейчас. Отмена через приложение недоступна.</p>
++            </div>
+           ) : (
+             <>
+               {cancelMutation.error && (
+@@ -343,7 +436,11 @@ export function BookingPage() {
+         {/* Confirmation Modal */}
+         <Modal
+           isOpen={showCancelModal}
+-          onClose={() => setShowCancelModal(false)}
++          onClose={() => {
++            if (!cancelMutation.isPending) {
++              setShowCancelModal(false)
++            }
++          }}
+           titleId="cancel-dialog-title"
+           className="cancel-confirm-modal"
+         >
+@@ -353,10 +450,17 @@ export function BookingPage() {
+             {formatDateRu(existingBooking.date, 'long')} в {existingBooking.startAt}?
+           </p>
+ 
++          {cancelMutation.error && (
++            <div className="inline-error" role="alert" style={{ marginBottom: '14px' }}>
++              {cancelMutation.error.message}
++            </div>
++          )}
++
+           <div className="cancel-confirm-modal__actions">
+             <Button
+               type="button"
+               variant="secondary"
++              disabled={cancelMutation.isPending}
+               onClick={() => setShowCancelModal(false)}
+             >
+               Оставить запись
+@@ -365,10 +469,7 @@ export function BookingPage() {
+               type="button"
+               className="button button--danger"
+               disabled={cancelMutation.isPending}
+-              onClick={() => {
+-                cancelMutation.mutate()
+-                setShowCancelModal(false)
+-              }}
++              onClick={() => cancelMutation.mutate()}
+             >
+               {cancelMutation.isPending ? 'Отменяем…' : 'Отменить запись'}
+             </Button>
+@@ -378,21 +479,39 @@ export function BookingPage() {
+     )
+   }
+ 
+-  // --- NEW BOOKING CREATION VIEW (when slot is not yet booked) ---
+-  const freePlaces = Math.max(0, slot!.capacity - slot!.occupied)
+-  const isFull = freePlaces <= 0 || slot!.isBlocked
+-  const formattedDate = formatWorkoutDate(slot!.date, slot!.dateLabel)
++  // --- NEW BOOKING CREATION VIEW (when slot is open to book or being confirmed) ---
++  const startIso = slot?.startIso ?? ''
++  const startTime = startIso ? new Date(startIso).getTime() : NaN
++  const now = Date.now()
++  const isPast = !isNaN(startTime) && now >= startTime
++  const isBlocked = slot?.isBlocked ?? false
++  const freePlaces = slot ? Math.max(0, slot.capacity - slot.occupied) : 0
++  const isFull = freePlaces <= 0
++  const isUnavailable = isBlocked || isPast || isFull
++
++  let unavailableReason = ''
++  if (isBlocked) {
++    unavailableReason = 'Зал закрыт на это время. Пожалуйста, выберите другой интервал в расписании.'
++  } else if (isPast) {
++    unavailableReason = 'Это время уже прошло или тренировка уже началась. Пожалуйста, выберите будущее время в расписании.'
++  } else if (isFull) {
++    unavailableReason = 'Все места заняты. Пожалуйста, выберите другой интервал в расписании.'
++  }
++
++  const formattedDate = slot ? formatWorkoutDate(slot.date, slot.dateLabel) : ''
+   const capacityLabel = `60 мин · ${formatCapacity(freePlaces)}`
+-  const activeTrainers = trainersQuery.data ?? []
++  const activeTrainers = (trainersQuery.data ?? []).filter(
++    (t): t is Trainer & { id: TrainerId } => isSupportedBookingTrainer(t.id)
++  )
+ 
+   return (
+     <div
+       className="page training-details-page"
+-      aria-label={`Запись на тренировку: ${formattedDate} с ${slot!.startAt} до ${slot!.endAt}`}
++      aria-label={`Запись на тренировку: ${formattedDate} с ${slot?.startAt} до ${slot?.endAt}`}
+     >
+       <Link
+-        to="/schedule"
+-        state={{ fromSlotId: slotId }}
++        to={scheduleReturnUrl}
++        state={scheduleReturnState}
+         viewTransition
+         className="back-link"
+         aria-label="Вернуться к расписанию"
+@@ -412,9 +531,9 @@ export function BookingPage() {
+         <h1
+           className="training-details__time"
+           style={{ viewTransitionName: 'hero-slot-time' }}
+-          aria-label={`Время: с ${slot!.startAt} до ${slot!.endAt}`}
++          aria-label={`Время: с ${slot?.startAt} до ${slot?.endAt}`}
+         >
+-          {slot!.startAt}–{slot!.endAt}
++          {slot?.startAt}–{slot?.endAt}
+         </h1>
+       </header>
+ 
+@@ -430,23 +549,50 @@ export function BookingPage() {
+ 
+       <div className="training-details__divider" role="separator" />
+ 
+-      {!isFull ? (
++      {!isUnavailable ? (
+         <>
+-          <section className="booking-mode" aria-labelledby="booking-mode-heading">
+-            <h2 id="booking-mode-heading" className="booking-mode__title">
++          <fieldset
++            className="booking-mode"
++            style={{ border: 'none', padding: 0, margin: 0 }}
++            aria-labelledby="booking-mode-heading"
++          >
++            <legend id="booking-mode-heading" className="booking-mode__title">
+               Как будете заниматься?
+-            </h2>
+-            <div className="booking-options" role="radiogroup" aria-label="Формат тренировки">
+-              <button
+-                type="button"
+-                role="radio"
+-                aria-checked={mode === 'self'}
+-                className={`booking-option motion-pressable ${mode === 'self' ? 'is-selected' : ''}`}
+-                onClick={() => {
+-                  setMode('self')
+-                  void haptics.selection()
+-                }}
++            </legend>
++
++            {trainersQuery.isError && (
++              <div className="inline-error" role="alert" style={{ marginBottom: '12px' }}>
++                <p style={{ margin: '0 0 8px' }}>
++                  Не удалось загрузить список тренеров. Вы можете записаться самостоятельно или повторить попытку.
++                </p>
++                <button
++                  type="button"
++                  className="button button--sm button--secondary"
++                  onClick={() => void trainersQuery.refetch()}
++                >
++                  Повторить загрузку тренеров
++                </button>
++              </div>
++            )}
++
++            <div className="booking-options" role="radiogroup" aria-labelledby="booking-mode-heading">
++              <label
++                className={`booking-option motion-pressable ${mode === 'self' ? 'is-selected' : ''} ${
++                  confirmPhase !== 'idle' ? 'is-disabled' : ''
++                }`}
+               >
++                <input
++                  type="radio"
++                  name="booking-mode"
++                  value="self"
++                  checked={mode === 'self'}
++                  disabled={confirmPhase !== 'idle'}
++                  onChange={() => {
++                    setMode('self')
++                    void haptics.selection()
++                  }}
++                  className="booking-option__input"
++                />
+                 <div className="booking-option__content">
+                   <span className="booking-option__name">Самостоятельно</span>
+                   <span className="booking-option__subtitle">Без тренера</span>
+@@ -454,23 +600,36 @@ export function BookingPage() {
+                 <span className="booking-option__radio" aria-hidden="true">
+                   {mode === 'self' && <Check size={14} strokeWidth={3} />}
+                 </span>
+-              </button>
++              </label>
++
++              {trainersQuery.data && trainersQuery.data.length === 0 && !trainersQuery.isError && (
++                <div className="inline-note" style={{ margin: '4px 0 8px' }}>
++                  Нет доступных тренеров на это время. Доступна самостоятельная тренировка.
++                </div>
++              )}
+ 
+               {activeTrainers.map((trainer) => {
+                 const isSelected = mode === trainer.id
+                 const subtitle = getTrainerSubtitle(trainer)
+                 return (
+-                  <button
++                  <label
+                     key={trainer.id}
+-                    type="button"
+-                    role="radio"
+-                    aria-checked={isSelected}
+-                    className={`booking-option motion-pressable ${isSelected ? 'is-selected' : ''}`}
+-                    onClick={() => {
+-                      setMode(trainer.id)
+-                      void haptics.selection()
+-                    }}
++                    className={`booking-option motion-pressable ${isSelected ? 'is-selected' : ''} ${
++                      confirmPhase !== 'idle' ? 'is-disabled' : ''
++                    }`}
+                   >
++                    <input
++                      type="radio"
++                      name="booking-mode"
++                      value={trainer.id}
++                      checked={isSelected}
++                      disabled={confirmPhase !== 'idle'}
++                      onChange={() => {
++                        setMode(trainer.id)
++                        void haptics.selection()
++                      }}
++                      className="booking-option__input"
++                    />
+                     <div className="booking-option__content">
+                       <span className="booking-option__name">{trainer.name}</span>
+                       <span className="booking-option__subtitle">{subtitle}</span>
+@@ -478,11 +637,11 @@ export function BookingPage() {
+                     <span className="booking-option__radio" aria-hidden="true">
+                       {isSelected && <Check size={14} strokeWidth={3} />}
+                     </span>
+-                  </button>
++                  </label>
+                 )
+               })}
+             </div>
+-          </section>
++          </fieldset>
+ 
+           <div className="booking-actions">
+             {createMutation.error && (
+@@ -513,9 +672,14 @@ export function BookingPage() {
+       ) : (
+         <div className="booking-actions">
+           <div className="inline-error" role="status">
+-            Это время уже заполнено. Пожалуйста, выберите другой интервал в расписании.
++            {unavailableReason}
+           </div>
+-          <ButtonLink to="/schedule" variant="secondary" className="booking-submit-btn">
++          <ButtonLink
++            to={scheduleReturnUrl}
++            state={scheduleReturnState}
++            variant="secondary"
++            className="booking-submit-btn"
++          >
+             Выбрать другое время
+           </ButtonLink>
+         </div>
+diff --git a/src/pages/SchedulePage.tsx b/src/pages/SchedulePage.tsx
+index e07a4ee..d464054 100644
+--- a/src/pages/SchedulePage.tsx
++++ b/src/pages/SchedulePage.tsx
+@@ -1,6 +1,6 @@
+ import { useQuery } from '@tanstack/react-query'
+ import { AlertCircle, ArrowRight, CalendarDays, CalendarX, UsersRound } from 'lucide-react'
+-import { useState } from 'react'
++import { useEffect, useRef, useState } from 'react'
+ import { Link, useLocation, useSearchParams } from 'react-router-dom'
+ import { DateStrip } from '../components/DateStrip'
+ import { PageHeader, Skeleton } from '../components/ui'
+@@ -11,13 +11,24 @@ import type { ScheduleDay } from '../types/domain'
+ interface AvailabilityResult {
+   free: number
+   label: string
+-  tone: 'positive' | 'warning' | 'full'
++  tone: 'positive' | 'warning' | 'full' | 'blocked' | 'past'
+   isAvailable: boolean
+ }
+ 
+-function getSlotAvailability(occupied: number, capacity: number, isBlocked: boolean): AvailabilityResult {
++function getSlotAvailability(
++  occupied: number,
++  capacity: number,
++  isBlocked: boolean,
++  endIso?: string
++): AvailabilityResult {
+   if (isBlocked) {
+-    return { free: 0, label: 'Зал закрыт', tone: 'full', isAvailable: false }
++    return { free: 0, label: 'Зал закрыт', tone: 'blocked', isAvailable: false }
++  }
++  if (endIso) {
++    const endTime = new Date(endIso).getTime()
++    if (!isNaN(endTime) && endTime <= Date.now()) {
++      return { free: 0, label: 'Время прошло', tone: 'past', isAvailable: false }
++    }
+   }
+   const free = Math.max(0, capacity - occupied)
+   if (free <= 0) {
+@@ -44,9 +55,14 @@ function formatDayHeading(day: ScheduleDay): string {
+ export function SchedulePage() {
+   const [params, setParams] = useSearchParams()
+   const location = useLocation()
+-  const backSlotId = (location.state as { fromSlotId?: string } | null)?.fromSlotId
++  const backSlotId =
++    (location.state as { fromSlotId?: string } | null)?.fromSlotId ??
++    (window.history.state?.usr as { fromSlotId?: string } | undefined)?.fromSlotId ??
++    params.get('slot') ??
++    params.get('fromSlotId')
+   const [activeSlotId, setActiveSlotId] = useState<string | null>(null)
+   const transitioningSlotId = activeSlotId ?? backSlotId
++
+   const { data, isLoading, isError, refetch } = useQuery({
+     queryKey: ['schedule'],
+     queryFn: getScheduleData,
+@@ -56,8 +72,15 @@ export function SchedulePage() {
+     queryFn: getTrainers,
+   })
+ 
+-  const selectedDate = params.get('date') ?? data?.days[0]?.id ?? ''
+-  const trainerId = params.get('trainer')
++  const selectedDate =
++    params.get('date') ??
++    (location.state as { date?: string } | null)?.date ??
++    data?.days[0]?.id ??
++    ''
++  const trainerId =
++    params.get('trainer') ??
++    (location.state as { trainer?: string } | null)?.trainer ??
++    null
+   const trainer = trainersQuery.data?.find((item) => item.id === trainerId)
+ 
+   const selectDate = (date: string) => {
+@@ -66,6 +89,42 @@ export function SchedulePage() {
+     setParams(next)
+   }
+ 
++  const resetTrainer = () => {
++    const next = new URLSearchParams(params)
++    next.delete('trainer')
++    setParams(next)
++  }
++
++  const lastRestoredKeyRef = useRef<string | null>(null)
++
++  // Restore scroll and focus when returning from booking
++  useEffect(() => {
++    if (isLoading || !data) return
++    if (!backSlotId || lastRestoredKeyRef.current === location.key) return
++
++    const timer = setTimeout(() => {
++      lastRestoredKeyRef.current = location.key
++      const targetId = backSlotId.startsWith('slot-') ? backSlotId : `slot-${backSlotId}`
++      const slotEl = document.getElementById(targetId)
++      if (slotEl) {
++        if (typeof slotEl.scrollIntoView === 'function') {
++          slotEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
++        }
++        slotEl.focus?.({ preventScroll: true })
++      } else {
++        const headingEl = document.getElementById('schedule-day-heading')
++        if (headingEl) {
++          if (typeof headingEl.scrollIntoView === 'function') {
++            headingEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
++          }
++          headingEl.focus?.({ preventScroll: true })
++        }
++      }
++    }, 100)
++
++    return () => clearTimeout(timer)
++  }, [backSlotId, isLoading, data, selectedDate, location.key])
++
+   // Loading skeleton matching layout shape
+   if (isLoading) {
+     return (
+@@ -93,10 +152,10 @@ export function SchedulePage() {
+     return (
+       <div className="page schedule-page">
+         <PageHeader eyebrow="Запись" title="Выберите время" />
+-        <div className="schedule-state-card schedule-state-card--error" role="alert">
+-          <AlertCircle size={32} className="schedule-state-card__icon" aria-hidden="true" />
+-          <h3 className="schedule-state-card__title">Не удалось загрузить расписание</h3>
+-          <p className="schedule-state-card__text">Проверьте соединение с интернетом и попробуйте снова.</p>
++        <div className="schedule-state schedule-state--error schedule-state-card schedule-state-card--error" role="alert">
++          <AlertCircle size={32} className="schedule-state__icon schedule-state-card__icon" aria-hidden="true" />
++          <h3 className="schedule-state__title schedule-state-card__title">Не удалось загрузить расписание</h3>
++          <p className="schedule-state__text schedule-state-card__text">Проверьте соединение с интернетом и попробуйте снова.</p>
+           <button
+             type="button"
+             className="button button--primary"
+@@ -119,7 +178,7 @@ export function SchedulePage() {
+       {trainer && (
+         <div className="schedule-filter">
+           <span>С тренером {trainer.name}</span>
+-          <button type="button" onClick={() => setParams({ date: selectedDate })}>
++          <button type="button" onClick={resetTrainer}>
+             Сбросить
+           </button>
+         </div>
+@@ -130,15 +189,15 @@ export function SchedulePage() {
+       {selectedDay && (
+         <div className="schedule-day-title">
+           <CalendarDays size={18} className="schedule-day-title__icon" aria-hidden="true" />
+-          <h2>{formatDayHeading(selectedDay)}</h2>
++          <h2 id="schedule-day-heading" tabIndex={-1}>{formatDayHeading(selectedDay)}</h2>
+         </div>
+       )}
+ 
+       {slots.length === 0 ? (
+-        <div className="schedule-state-card schedule-state-card--empty" role="status">
+-          <CalendarX size={32} className="schedule-state-card__icon" aria-hidden="true" />
+-          <h3 className="schedule-state-card__title">На этот день тренировок нет</h3>
+-          <p className="schedule-state-card__text">
++        <div className="schedule-state schedule-state--empty schedule-state-card schedule-state-card--empty" role="status">
++          <CalendarX size={32} className="schedule-state__icon schedule-state-card__icon" aria-hidden="true" />
++          <h3 className="schedule-state__title schedule-state-card__title">На этот день тренировок нет</h3>
++          <p className="schedule-state__text schedule-state-card__text">
+             Выберите другую дату в календаре выше или посмотрите ближайшие доступные дни.
+           </p>
+           {data.days[0] && data.days[0].id !== selectedDate && (
+@@ -152,75 +211,86 @@ export function SchedulePage() {
+           )}
+         </div>
+       ) : (
+-        <div className="slot-list" role="list" aria-label="Доступные временные слоты">
++        <ul className="slot-list" aria-label="Доступные временные слоты">
+           {slots.map((slot) => {
+-            const availability = getSlotAvailability(slot.occupied, slot.capacity, slot.isBlocked)
+-            const query = trainer ? `?trainer=${trainer.id}` : ''
++            const availability = getSlotAvailability(
++              slot.occupied,
++              slot.capacity,
++              slot.isBlocked,
++              slot.endIso
++            )
+             const isClickable = availability.isAvailable
++            const isTransitioning = transitioningSlotId === slot.id
+ 
+-            if (!isClickable) {
+-              return (
+-                <div
+-                  key={slot.id}
+-                  className="time-slot is-disabled"
+-                  role="listitem"
+-                  aria-disabled="true"
+-                >
+-                  <div className="time-slot__time-col">
+-                    <strong className="time-slot__interval">{slot.startAt}–{slot.endAt}</strong>
+-                    <span className="time-slot__duration">60 мин</span>
+-                  </div>
++            const bookingParams = new URLSearchParams()
++            if (trainer) bookingParams.set('trainer', trainer.id)
++            if (selectedDate) bookingParams.set('date', selectedDate)
++            const query = bookingParams.toString() ? `?${bookingParams.toString()}` : ''
+ 
+-                  <div className="time-slot__status-col">
+-                    <div className="time-slot__occupancy">
+-                      <UsersRound size={15} aria-hidden="true" />
+-                      <span>{slot.occupied} / {slot.capacity}</span>
++            return (
++              <li key={slot.id} className="slot-list__item" id={`slot-item-${slot.id}`}>
++                {isClickable ? (
++                  <Link
++                    key={slot.id}
++                    id={`slot-${slot.id}`}
++                    to={`/booking/${slot.id}${query}`}
++                    state={{ fromSlotId: slot.id, date: selectedDate, trainer: trainer?.id }}
++                    viewTransition
++                    onClick={() => setActiveSlotId(slot.id)}
++                    className={`time-slot is-available ${isTransitioning ? 'is-transitioning' : ''}`}
++                    aria-label={`Записаться на время ${slot.startAt}–${slot.endAt}, ${availability.label}, занято ${slot.occupied} из ${slot.capacity}`}
++                  >
++                    <div className="time-slot__time-col">
++                      <strong
++                        className="time-slot__interval"
++                        style={isTransitioning ? { viewTransitionName: 'hero-slot-time' } : undefined}
++                      >
++                        {slot.startAt}–{slot.endAt}
++                      </strong>
++                      <span className="time-slot__duration">60 мин</span>
+                     </div>
+-                    <span className="time-slot__status is-full">{availability.label}</span>
+-                  </div>
+-                </div>
+-              )
+-            }
+ 
+-            const isTransitioning = transitioningSlotId === slot.id
++                    <div className="time-slot__status-col">
++                      <div className="time-slot__occupancy" aria-label={`Занято ${slot.occupied} из ${slot.capacity}`}>
++                        <UsersRound size={15} aria-hidden="true" />
++                        <span>{slot.occupied} / {slot.capacity}</span>
++                      </div>
++                      <span className={`time-slot__status is-${availability.tone}`}>
++                        {availability.label}
++                      </span>
++                    </div>
+ 
+-            return (
+-              <Link
+-                key={slot.id}
+-                to={`/booking/${slot.id}${query}`}
+-                viewTransition
+-                onClick={() => setActiveSlotId(slot.id)}
+-                className={`time-slot is-available ${isTransitioning ? 'is-transitioning' : ''}`}
+-                role="listitem"
+-                aria-label={`Записаться на время ${slot.startAt}–${slot.endAt}, ${availability.label}, занято ${slot.occupied} из ${slot.capacity}`}
+-              >
+-                <div className="time-slot__time-col">
+-                  <strong
+-                    className="time-slot__interval"
+-                    style={isTransitioning ? { viewTransitionName: 'hero-slot-time' } : undefined}
++                    <div className="time-slot__affordance" aria-hidden="true">
++                      <ArrowRight size={18} />
++                    </div>
++                  </Link>
++                ) : (
++                  <div
++                    id={`slot-${slot.id}`}
++                    className={`time-slot is-disabled is-${availability.tone}`}
++                    aria-disabled="true"
++                    aria-label={`Время ${slot.startAt}–${slot.endAt}, ${availability.label}, занято ${slot.occupied} из ${slot.capacity}`}
+                   >
+-                    {slot.startAt}–{slot.endAt}
+-                  </strong>
+-                  <span className="time-slot__duration">60 мин</span>
+-                </div>
+-
+-                <div className="time-slot__status-col">
+-                  <div className="time-slot__occupancy">
+-                    <UsersRound size={15} aria-hidden="true" />
+-                    <span>{slot.occupied} / {slot.capacity}</span>
++                    <div className="time-slot__time-col">
++                      <strong className="time-slot__interval">{slot.startAt}–{slot.endAt}</strong>
++                      <span className="time-slot__duration">60 мин</span>
++                    </div>
++
++                    <div className="time-slot__status-col">
++                      <div className="time-slot__occupancy" aria-label={`Занято ${slot.occupied} из ${slot.capacity}`}>
++                        <UsersRound size={15} aria-hidden="true" />
++                        <span>{slot.occupied} / {slot.capacity}</span>
++                      </div>
++                      <span className={`time-slot__status is-${availability.tone}`}>
++                        {availability.label}
++                      </span>
++                    </div>
+                   </div>
+-                  <span className={`time-slot__status is-${availability.tone}`}>
+-                    {availability.label}
+-                  </span>
+-                </div>
+-
+-                <div className="time-slot__affordance" aria-hidden="true">
+-                  <ArrowRight size={18} />
+-                </div>
+-              </Link>
++                )}
++              </li>
+             )
+           })}
+-        </div>
++        </ul>
+       )}
+ 
+       <p className="schedule-note">Время для Великого Новгорода · UTC+3</p>
+diff --git a/src/pages/TrainerPage.tsx b/src/pages/TrainerPage.tsx
+index 5ea4a61..e81516e 100644
+--- a/src/pages/TrainerPage.tsx
++++ b/src/pages/TrainerPage.tsx
+@@ -1,96 +1,286 @@
+ import { useQuery } from '@tanstack/react-query'
+-import { ArrowLeft, CalendarClock, Check } from 'lucide-react'
+-import { Link, Navigate, useParams } from 'react-router-dom'
++import { ArrowLeft, RefreshCw } from 'lucide-react'
++import { Link, useParams } from 'react-router-dom'
+ import { TrainerAvatar } from '../components/TrainerCard'
+-import { ButtonLink, Card, LoadingPage, SectionHeader } from '../components/ui'
++import { Button, ButtonLink, Skeleton } from '../components/ui'
+ import { getScheduleData } from '../api/schedule'
+ import { getTrainers } from '../api/trainers'
++import { isSupportedBookingTrainer } from '../types/domain'
++import { cleanSpecialty } from '../utils/formatters'
+ 
+ export function TrainerPage() {
+-  const { id } = useParams()
+-  const trainersQuery = useQuery({ queryKey: ['trainers'], queryFn: getTrainers })
+-  const scheduleQuery = useQuery({ queryKey: ['schedule'], queryFn: getScheduleData })
+-  if (trainersQuery.isLoading || scheduleQuery.isLoading) return <LoadingPage label="Загружаем профиль тренера" />
++  const { id } = useParams<{ id: string }>()
++
++  const trainersQuery = useQuery({
++    queryKey: ['trainers'],
++    queryFn: getTrainers,
++  })
++
++  const scheduleQuery = useQuery({
++    queryKey: ['schedule'],
++    queryFn: getScheduleData,
++  })
++
++  // 1. Loading State
++  if (trainersQuery.isLoading) {
++    return (
++      <div
++        className="page trainer-detail-page trainer-detail-page--loading"
++        aria-busy="true"
++        aria-label="Загрузка профиля тренера"
++      >
++        <div className="back-link back-link--skeleton">
++          <Skeleton style={{ width: '120px', height: '24px' }} />
++        </div>
++        <div className="trainer-hero trainer-hero--skeleton">
++          <Skeleton className="trainer-hero__avatar-skeleton" />
++          <div className="trainer-hero__info">
++            <Skeleton style={{ width: '60px', height: '12px', marginBottom: '8px' }} />
++            <Skeleton style={{ width: '220px', height: '36px' }} />
++          </div>
++        </div>
++        <Skeleton style={{ width: '100%', height: '48px', marginTop: '16px' }} />
++        <div style={{ marginTop: '28px' }}>
++          <Skeleton style={{ width: '140px', height: '20px', marginBottom: '14px' }} />
++          <Skeleton style={{ width: '100%', height: '60px' }} />
++        </div>
++      </div>
++    )
++  }
++
++  // 2. Error State (Network error loading trainers)
++  if (trainersQuery.isError) {
++    return (
++      <div className="page trainer-detail-page">
++        <Link to="/trainers" viewTransition className="back-link">
++          <ArrowLeft size={19} aria-hidden="true" />
++          <span>Все тренеры</span>
++        </Link>
++        <div className="trainer-profile-state trainer-profile-state--error" role="alert">
++          <p className="trainer-profile-state__message">
++            Не удалось загрузить профиль тренера. Проверьте соединение и повторите попытку.
++          </p>
++          <Button
++            type="button"
++            variant="secondary"
++            onClick={() => trainersQuery.refetch()}
++            disabled={trainersQuery.isFetching}
++            className="trainer-profile-state__btn"
++          >
++            <RefreshCw
++              size={16}
++              className={trainersQuery.isFetching ? 'animate-spin' : ''}
++              aria-hidden="true"
++            />
++            <span>{trainersQuery.isFetching ? 'Загрузка…' : 'Повторить попытку'}</span>
++          </Button>
++        </div>
++      </div>
++    )
++  }
++
+   const trainer = trainersQuery.data?.find((item) => item.id === id)
+-  if (!trainer || !['dima', 'vanya'].includes(id ?? '')) return <Navigate to="/404" replace />
+-  const available = scheduleQuery.data?.slots.find((slot) => slot.occupied < slot.capacity && !slot.isBlocked)
++
++  // 3. Not Found State (Trainer genuinely unknown in roster)
++  if (!trainer) {
++    return (
++      <div className="page trainer-detail-page">
++        <Link to="/trainers" viewTransition className="back-link">
++          <ArrowLeft size={19} aria-hidden="true" />
++          <span>Все тренеры</span>
++        </Link>
++        <div className="trainer-profile-state trainer-profile-state--not-found" role="status">
++          <p className="trainer-profile-state__message">
++            Тренер не найден. Возможно, профиль был перемещен или удален.
++          </p>
++          <ButtonLink to="/trainers" variant="secondary" className="trainer-profile-state__btn">
++            Вернуться к списку тренеров
++          </ButtonLink>
++        </div>
++      </div>
++    )
++  }
++
++  const isBookingSupported = isSupportedBookingTrainer(trainer.id)
++  const specialties = trainer.specialties.map(cleanSpecialty).filter(Boolean)
++
++  // Future unblocked slots calculation
++  const now = new Date()
++  const futureSlots =
++    scheduleQuery.data?.slots.filter((slot) => {
++      const isFuture = new Date(slot.endIso).getTime() > now.getTime()
++      return isFuture && !slot.isBlocked
++    }) ?? []
++  const nextAvailableSlot = futureSlots.find((slot) => slot.occupied < slot.capacity)
+ 
+   return (
+     <div className="page trainer-detail-page">
+-      <Link to="/trainers" viewTransition className="back-link">
+-        <ArrowLeft size={19} /> Все тренеры
++      {/* Back Link */}
++      <Link to="/trainers" viewTransition className="back-link" aria-label="Вернуться ко всем тренерам">
++        <ArrowLeft size={19} aria-hidden="true" />
++        <span>Все тренеры</span>
+       </Link>
+-      <section className="trainer-hero">
++
++      {/* Hero Identity Section */}
++      <section className="trainer-hero" aria-label={`Профиль: ${trainer.name}`}>
+         <TrainerAvatar
+           trainer={trainer}
++          className="trainer-hero__avatar"
+           style={{ viewTransitionName: `trainer-avatar-${trainer.id}` }}
+         />
+-        <div>
+-          <p className="eyebrow">Тренер</p>
+-          <h1 style={{ viewTransitionName: `trainer-name-${trainer.id}` }}>
++        <div className="trainer-hero__info">
++          <span className="eyebrow trainer-hero__eyebrow">ТРЕНЕР</span>
++          <h1
++            className="trainer-hero__name"
++            style={{ viewTransitionName: `trainer-name-${trainer.id}` }}
++          >
+             {trainer.name}
+           </h1>
+-          <ul className="tag-list">
+-            {trainer.specialties.slice(0, 3).map((item) => (
+-              <li key={item}>{item}</li>
+-            ))}
+-          </ul>
+         </div>
+       </section>
+-      <ButtonLink
+-        to={`/schedule?trainer=${trainer.id}`}
+-        viewTransition
+-      >
+-        Записаться к {trainer.name}
+-      </ButtonLink>
+-      <Card className="trainer-about">
+-        <SectionHeader title="О тренере" />
+-        <p>{trainer.about}</p>
+-        <h3>Направления</h3>
+-        <ul className="direction-list">
+-          {trainer.specialties.map((item) => <li key={item}><Check size={18} /> {item}</li>)}
+-        </ul>
+-      </Card>
+ 
++      {/* Primary Action */}
++      {isBookingSupported ? (
++        <ButtonLink
++          to={`/schedule?trainer=${trainer.id}`}
++          viewTransition
++          variant="primary"
++          className="trainer-profile-cta"
++          aria-label={`Выбрать время тренировки с ${trainer.name}`}
++        >
++          Выбрать время
++        </ButtonLink>
++      ) : (
++        <div className="trainer-profile-unsupported-note" role="note">
++          <p className="trainer-profile-unsupported-note__text">
++            Запись к этому тренеру через приложение временно недоступна.
++          </p>
++        </div>
++      )}
++
++      {/* Directions Section (Single substantive specialties list, no duplicate chips) */}
++      {specialties.length > 0 && (
++        <section className="trainer-profile-section trainer-directions" aria-label="Направления">
++          <h2 className="trainer-profile-section__title">Направления</h2>
++          <ul className="trainer-directions__list" aria-label={`Направления: ${trainer.name}`}>
++            {specialties.map((spec) => (
++              <li key={spec} className="trainer-directions__item">
++                <span className="trainer-directions__bullet" aria-hidden="true">·</span>
++                <span>{spec}</span>
++              </li>
++            ))}
++          </ul>
++        </section>
++      )}
++
++      {/* About Section */}
++      {trainer.about && (
++        <section className="trainer-profile-section trainer-about" aria-label="О тренере">
++          <h2 className="trainer-profile-section__title">О тренере</h2>
++          <p className="trainer-about__text">{trainer.about}</p>
++        </section>
++      )}
++
++      {/* Telegram Channel Section (Editorial block for Dima, no blue icon box) */}
+       {trainer.id === 'dima' && (
+-        <Card className="trainer-channel-card">
+-          <div className="trainer-channel-card__head">
+-            <div className="trainer-channel-card__icon" aria-hidden="true">
+-              <svg width={20} height={20} viewBox="0 0 24 24" fill="currentColor">
+-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.77-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .37z" />
+-              </svg>
+-            </div>
+-            <div>
+-              <span className="eyebrow" style={{ color: 'var(--brand-yellow)', marginBottom: 0 }}>Telegram-канал</span>
+-              <strong style={{ display: 'block', fontSize: '1rem', color: 'var(--text-primary)' }}>Говер на движениях</strong>
+-            </div>
++        <section className="trainer-profile-section trainer-channel" aria-label="Telegram-канал">
++          <div className="trainer-channel__header">
++            <span className="eyebrow trainer-channel__eyebrow">TELEGRAM-КАНАЛ</span>
++            <h3 className="trainer-channel__title">Говер на движениях</h3>
+           </div>
+-          <p style={{ margin: '8px 0 12px', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
++          <p className="trainer-channel__desc">
+             Авторский блог о спорте, триатлоне, забегах и подготовке атлетов в Великом Новгороде.
+           </p>
+           <a
+             href="https://t.me/goverrun"
+             target="_blank"
+             rel="noopener noreferrer"
+-            className="button button--secondary"
+-            style={{ width: '100%', minHeight: '40px', gap: '8px' }}
++            className="button button--secondary trainer-channel__btn"
++            aria-label="Перейти в Telegram-канал Говер на движениях"
+           >
+-            <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
+-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.77-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .37z" />
+-            </svg>
+             <span>Перейти в @goverrun</span>
+           </a>
+-        </Card>
++        </section>
+       )}
+ 
+-      {available && (
++      {/* Next Slot Section (Compact actionable row with honest caption) */}
++      <section className="trainer-profile-section trainer-next-slot-section" aria-label="Ближайшее время в зале">
++        {scheduleQuery.isLoading && (
++          <div
++            className="trainer-next-slot-row trainer-next-slot-row--loading"
++            aria-busy="true"
++            aria-label="Загрузка расписания"
++          >
++            <Skeleton style={{ width: '100%', height: '52px' }} />
++          </div>
++        )}
+ 
+-        <Card className="next-slot-card">
+-          <CalendarClock size={24} />
+-          <div><span>Ближайшее свободное время</span><strong>{available.dateLabel}, {available.startAt}–{available.endAt}</strong></div>
+-          <ButtonLink to={`/booking/${available.id}?trainer=${trainer.id}`} variant="secondary">Выбрать</ButtonLink>
+-        </Card>
+-      )}
++        {!scheduleQuery.isLoading && scheduleQuery.isError && (
++          <div className="trainer-next-slot-row trainer-next-slot-row--error">
++            <div className="trainer-next-slot-row__info">
++              <span className="trainer-next-slot-row__label">БЛИЖАЙШЕЕ ВРЕМЯ В ЗАЛЕ</span>
++              <p className="trainer-next-slot-row__desc">Не удалось загрузить ближайшие слоты</p>
++            </div>
++            <ButtonLink
++              to="/schedule"
++              variant="secondary"
++              className="trainer-next-slot-row__btn"
++              aria-label="Открыть расписание"
++            >
++              Расписание
++            </ButtonLink>
++          </div>
++        )}
++
++        {!scheduleQuery.isLoading && !scheduleQuery.isError && nextAvailableSlot && (
++          <div className="trainer-next-slot-row">
++            <div className="trainer-next-slot-row__info">
++              <span className="trainer-next-slot-row__label">БЛИЖАЙШЕЕ ВРЕМЯ В ЗАЛЕ</span>
++              <strong className="trainer-next-slot-row__time">
++                {nextAvailableSlot.dateLabel}, {nextAvailableSlot.startAt}–{nextAvailableSlot.endAt}
++              </strong>
++            </div>
++            {isBookingSupported ? (
++              <ButtonLink
++                to={`/booking/${nextAvailableSlot.id}?trainer=${trainer.id}`}
++                viewTransition
++                variant="secondary"
++                className="trainer-next-slot-row__btn"
++                aria-label={`Выбрать слот ${nextAvailableSlot.startAt} ${nextAvailableSlot.dateLabel}`}
++              >
++                Выбрать
++              </ButtonLink>
++            ) : (
++              <ButtonLink
++                to="/schedule"
++                viewTransition
++                variant="secondary"
++                className="trainer-next-slot-row__btn"
++                aria-label="Открыть общее расписание"
++              >
++                Расписание
++              </ButtonLink>
++            )}
++          </div>
++        )}
++
++        {!scheduleQuery.isLoading && !scheduleQuery.isError && !nextAvailableSlot && (
++          <div className="trainer-next-slot-row trainer-next-slot-row--empty">
++            <div className="trainer-next-slot-row__info">
++              <span className="trainer-next-slot-row__label">БЛИЖАЙШЕЕ ВРЕМЯ В ЗАЛЕ</span>
++              <p className="trainer-next-slot-row__desc">На ближайшие дни свободных мест нет</p>
++            </div>
++            <ButtonLink
++              to="/schedule"
++              variant="secondary"
++              className="trainer-next-slot-row__btn"
++              aria-label="Смотреть всё расписание"
++            >
++              Все слоты
++            </ButtonLink>
++          </div>
++        )}
++      </section>
+     </div>
+   )
+ }
+diff --git a/src/pages/TrainersPage.tsx b/src/pages/TrainersPage.tsx
+index 8c8dad4..34a7973 100644
+--- a/src/pages/TrainersPage.tsx
++++ b/src/pages/TrainersPage.tsx
+@@ -1,56 +1,118 @@
+ import { useQuery } from '@tanstack/react-query'
+-import { ArrowRight } from 'lucide-react'
++import { ArrowRight, RefreshCw } from 'lucide-react'
+ import { TrainerCard } from '../components/TrainerCard'
+-import { ButtonLink, PageHeader, Skeleton } from '../components/ui'
++import { Button, ButtonLink, PageHeader, Skeleton } from '../components/ui'
+ import { getTrainers } from '../api/trainers'
+ 
+ export function TrainersPage() {
+-  const { data, isLoading } = useQuery({ queryKey: ['trainers'], queryFn: getTrainers })
+-
+-  if (isLoading || !data) {
+-    return (
+-      <div className="page trainers-page" aria-busy="true" aria-label="Загрузка списка тренеров">
+-        <PageHeader eyebrow="Команда" title="Наши тренеры" />
+-        <p className="page-intro">Выберите тренера под свою задачу или занимайтесь самостоятельно.</p>
+-        <div className="trainer-grid" aria-hidden="true">
+-          <Skeleton className="trainer-card-skeleton" />
+-          <Skeleton className="trainer-card-skeleton" />
+-        </div>
+-      </div>
+-    )
+-  }
++  const { data, isLoading, isError, refetch, isFetching } = useQuery({
++    queryKey: ['trainers'],
++    queryFn: getTrainers,
++  })
+ 
+   return (
+     <div className="page trainers-page">
+       <PageHeader eyebrow="Команда" title="Наши тренеры" />
+-      <p className="page-intro">Выберите тренера под свою задачу или занимайтесь самостоятельно.</p>
+-
+-      <div className="trainer-grid">
+-        {data.map((trainer) => (
+-          <TrainerCard key={trainer.id} trainer={trainer} />
+-        ))}
+-      </div>
++      <p className="page-intro">
++        Выберите тренера под свою задачу или занимайтесь самостоятельно.
++      </p>
+ 
+-      {/* Secondary scenario: self workout */}
+-      <section className="self-training-section" aria-label="Самостоятельная тренировка">
+-        <div className="self-training-card">
+-          <div className="self-training-card__info">
+-            <span className="eyebrow self-training-card__eyebrow">САМОСТОЯТЕЛЬНО</span>
+-            <h3 className="self-training-card__title">Хотите заниматься самостоятельно?</h3>
+-            <p className="self-training-card__desc">
+-              Доступ к залу и всему оборудованию по предварительной записи.
+-            </p>
++      {/* 1. Loading State */}
++      {isLoading && (
++        <div
++          className="trainer-list trainer-list--loading"
++          aria-busy="true"
++          aria-label="Загрузка списка тренеров"
++        >
++          <div className="trainer-entity-skeleton">
++            <div className="trainer-entity-skeleton__header">
++              <Skeleton className="trainer-entity-skeleton__avatar" />
++              <div className="trainer-entity-skeleton__text">
++                <Skeleton style={{ width: '60px', height: '12px', marginBottom: '8px' }} />
++                <Skeleton style={{ width: '180px', height: '28px' }} />
++              </div>
++            </div>
++            <Skeleton style={{ width: '100%', height: '40px', marginTop: '14px' }} />
++            <Skeleton style={{ width: '140px', height: '44px', marginTop: '16px' }} />
+           </div>
+-          <ButtonLink
+-            to="/schedule"
++          <div className="trainer-list__divider" role="separator" />
++          <div className="trainer-entity-skeleton">
++            <div className="trainer-entity-skeleton__header">
++              <Skeleton className="trainer-entity-skeleton__avatar" />
++              <div className="trainer-entity-skeleton__text">
++                <Skeleton style={{ width: '60px', height: '12px', marginBottom: '8px' }} />
++                <Skeleton style={{ width: '180px', height: '28px' }} />
++              </div>
++            </div>
++            <Skeleton style={{ width: '100%', height: '40px', marginTop: '14px' }} />
++            <Skeleton style={{ width: '140px', height: '44px', marginTop: '16px' }} />
++          </div>
++        </div>
++      )}
++
++      {/* 2. Error State */}
++      {!isLoading && isError && (
++        <div className="trainers-state trainers-state--error" role="alert">
++          <p className="trainers-state__message">
++            Не удалось загрузить список тренеров. Проверьте соединение и повторите попытку.
++          </p>
++          <Button
++            type="button"
+             variant="secondary"
+-            className="self-training-card__btn"
+-            aria-label="Выбрать время для самостоятельной тренировки"
++            onClick={() => refetch()}
++            disabled={isFetching}
++            className="trainers-state__btn"
+           >
+-            <span>Выбрать время</span>
+-            <ArrowRight size={16} aria-hidden="true" />
+-          </ButtonLink>
++            <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} aria-hidden="true" />
++            <span>{isFetching ? 'Загрузка…' : 'Повторить попытку'}</span>
++          </Button>
++        </div>
++      )}
++
++      {/* 3. Empty State */}
++      {!isLoading && !isError && data && data.length === 0 && (
++        <div className="trainers-state trainers-state--empty" role="status">
++          <p className="trainers-state__message">
++            В данный момент список тренеров обновляется. Вы можете записаться на самостоятельную
++            тренировку в расписании.
++          </p>
++        </div>
++      )}
++
++      {/* 4. Loaded Trainers List */}
++      {!isLoading && !isError && data && data.length > 0 && (
++        <div className="trainer-list trainer-grid">
++          {data.map((trainer, index) => (
++            <div key={trainer.id} className="trainer-list__item">
++              {index > 0 && <div className="trainer-list__divider" role="separator" />}
++              <TrainerCard trainer={trainer} />
++            </div>
++          ))}
++        </div>
++      )}
++
++      {/* 5. Self-Training Open Footer Row */}
++      <section className="self-training-row self-training-section" aria-label="Самостоятельная тренировка">
++        <div className="self-training-row__info self-training-card__info">
++          <span className="eyebrow self-training-row__eyebrow self-training-card__eyebrow">
++            САМОСТОЯТЕЛЬНО
++          </span>
++          <h3 className="self-training-row__title self-training-card__title">
++            Хотите заниматься самостоятельно?
++          </h3>
++          <p className="self-training-row__desc self-training-card__desc">
++            Доступ к залу и всему оборудованию по предварительной записи.
++          </p>
+         </div>
++        <ButtonLink
++          to="/schedule"
++          variant="secondary"
++          className="self-training-row__btn self-training-card__btn"
++          aria-label="Выбрать время для самостоятельной тренировки"
++        >
++          <span>Выбрать время</span>
++          <ArrowRight size={16} aria-hidden="true" />
++        </ButtonLink>
+       </section>
+     </div>
+   )
+diff --git a/src/types/domain.ts b/src/types/domain.ts
+index 14b84f1..a2b77e8 100644
+--- a/src/types/domain.ts
++++ b/src/types/domain.ts
+@@ -2,6 +2,10 @@ export type TrainerId = 'dima' | 'vanya'
+ export type BookingStatus = 'confirmed' | 'cancelled' | 'completed' | 'no_show'
+ export type BookingMode = 'self' | TrainerId
+ 
++export function isSupportedBookingTrainer(id: string): id is TrainerId {
++  return id === 'dima' || id === 'vanya'
++}
++
+ export interface User {
+   id: string
+   name: string
+@@ -11,7 +15,7 @@ export interface User {
+ }
+ 
+ export interface Trainer {
+-  id: TrainerId
++  id: string
+   name: string
+   specialties: string[]
+   about: string
+diff --git a/src/utils/formatters.ts b/src/utils/formatters.ts
+index 242259e..e60f319 100644
+--- a/src/utils/formatters.ts
++++ b/src/utils/formatters.ts
+@@ -131,3 +131,13 @@ export function formatHeroSemanticDate(dateStr?: string | null, isoStr?: string
+     return dateStr ?? ''
+   }
+ }
++
++/**
++ * Clean and preserve full specialty author text, ensuring capital first letter.
++ */
++export function cleanSpecialty(tag: string): string {
++  const trimmed = tag.trim()
++  if (!trimmed) return ''
++  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
++}
++

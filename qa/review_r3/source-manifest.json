@@ -1,0 +1,278 @@
+[
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\App.tsx",
+    "Hash": "643B673C15FCAE72FE4939B86CB5CE3E8C860DE971CE9905EBCBA23ECB29BFCC"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\main.tsx",
+    "Hash": "4E81B65BB1F96A89D28E8363C7D5A1074DB2924816AED6260D7AD23D5ACE3671"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\vite-env.d.ts",
+    "Hash": "65996936FBB042915F7B74A200FCDDE7E410F32A669B1AB9597CFAA4B0FADDB5"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\api\\admin.ts",
+    "Hash": "1210E3C38FF73D2E7BACFD492138E49BE0ED9C4EC89C5D090057F5670B43E25E"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\api\\bookings.ts",
+    "Hash": "A3670614ECDFDB4DCC066836F924585D66E4A6B6B86F8357FF76DD9ECBA272FB"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\api\\client.ts",
+    "Hash": "0853E1A92620FFD6F0CDED0048A94D4DD1D6E3DC04B3C6ED6044D6864BAB97F3"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\api\\health.ts",
+    "Hash": "D8AE46AC1E1C6C046A8AF4054EB3C09D26AF14B2737452527EC67EA590D471E5"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\api\\home.ts",
+    "Hash": "8E563ADE9BEF2230ED5365A210CE9B03CF009C0B2230F003EE7F3DE46A331781"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\api\\mappers.ts",
+    "Hash": "B43211252D69D778C36E23B6153D6580449F0B259754BC41A9772D87784F0DA4"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\api\\news.ts",
+    "Hash": "C6B0637AD7C35E4761E0149A2B14425B53AA06FF74071552EE4782A6F0272B70"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\api\\profile.ts",
+    "Hash": "4E8E15677E4BBD2F08ABFDD29E4D596BB9A73AD7EA143461FF5F83208FDEEB84"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\api\\progress.ts",
+    "Hash": "6478F107E92AA0B71A4CEF4B7EE86BDB6DDC5EB4F844BE7652296E497F1DA203"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\api\\schedule.ts",
+    "Hash": "28AD4A261695745E00AA2090724C646CFA2296BEFF1B6CB2AF3D41EA487A7515"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\api\\trainers.ts",
+    "Hash": "26A12D340A2AA714DE08D32BC7994A5CE5E6A923944808B32954B26F1F89A1C2"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\AddMeasurementModal.tsx",
+    "Hash": "35687B16B09E9A1E9D0FA5E4F63E11456CBDCF2D221455294D363B6C3C682169"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\AppShell.tsx",
+    "Hash": "774B59650C52CBE26E3B01D5690B711D20C6F89AE69C2741951938561281C4DE"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\BookingCard.tsx",
+    "Hash": "8AC44BFD8A944E35AF869819A878CB66D50C8A950F1AAD54E16C30D63A2125A0"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\BrandLogo.tsx",
+    "Hash": "A6F46D1959750682B1655A6D06BEED044623425A65A3EF173939E446BE2E8859"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\CapacityIndicator.tsx",
+    "Hash": "931C4F2D11D29BC0EF391312833F728092EA898959E883A06A0440A37EBEE78A"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\DateStrip.tsx",
+    "Hash": "8969F858CCE43F771BAEF19A511DC6979BB422BA27B5DDF6B298D1C9A8B38035"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\GymNewsWidget.tsx",
+    "Hash": "5F4AA5359388186298C8E0E35C11C8966740841E9945CA5C33A89EE7AB5EB3F7"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\HealthSourcesModal.tsx",
+    "Hash": "E4EED5595F5C31F3F061AF5720E99E8183091C764ABCA814928B10567DCEFECD"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\MembershipCard.tsx",
+    "Hash": "420B7D864286CA989DE5B2BBE624E5464062463911362CA69F66407D84EADA58"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\Modal.tsx",
+    "Hash": "5F59D17D8016CFF1D01F5548103C67F997153C5132BB8851FAD80F3080C1577A"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\Navigation.tsx",
+    "Hash": "DEF04CA6A34B9729C9E6FBFB8A968EF929D931109EEFD9350EDCA27B040D7128"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\ProgressLineChart.tsx",
+    "Hash": "73A2096E045BED60E5E917E29FCF535456C50693ABB48F178C0E9CFFFE2C046C"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\Toast.tsx",
+    "Hash": "FDD006D30575DC903643F9D2304EDCE8851A9F66F523469E61DBAB6EF92A0515"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\TrainerCard.tsx",
+    "Hash": "B622639D3973655817B76445C8A2DDEED3545CF7C83423B71EA49D707318F361"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\ui.tsx",
+    "Hash": "B0FDBBA385AD1EED66AAB6A65EAFDBCCFCAAE4BED54D6D8900FF0732D6627C30"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\features\\bookings\\BookingContext.tsx",
+    "Hash": "DB938050ED86363B2CB70DBDE68C5905E7AAECCA0F1444C5B9B246C062F4AD95"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\hooks\\useCountUp.ts",
+    "Hash": "6C01CD5BE3930A2B1206BF7137E6C283573DBFCF1E8B6D634BEA6E3D294FB573"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\hooks\\useHealthSources.ts",
+    "Hash": "98E16608F4B90F1F9D309D7791FF69352906AC6D29699016BEE10C12F9CE789B"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\hooks\\useReducedMotion.ts",
+    "Hash": "688FE20797DAD871A81420477399A0E7439CB13B201BCF0764C522DB0B38708F"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\pages\\AdminPage.tsx",
+    "Hash": "5145E859AC8466C1DBBB24B26D7870FB26B9472D40A7621FCA96B995139CD6E5"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\pages\\BookingPage.tsx",
+    "Hash": "68F7B05CD3166199513A8B3CB96A76ACF70DA580C5C82319A9C9346E43ED128E"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\pages\\HomePage.tsx",
+    "Hash": "43E940CF566F03D589338070945BB2A276553D84874A0B8EA230D37130D44A10"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\pages\\IntegrationsPage.tsx",
+    "Hash": "F298322EEEC817C2D683ABFD60772F8D989ECBE9A3EDCAE14D89C57F15768BDD"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\pages\\NotFoundPage.tsx",
+    "Hash": "433BFB96370CF4291BFC5FA7BBE1C89701B969C99793E9D0D830EEF89F329217"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\pages\\ProfilePage.tsx",
+    "Hash": "A2A826CA5D98710EA98B293403614E43B67B254CAFA7C9D56DCDDA2C3FE1A42B"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\pages\\ProgressPage.tsx",
+    "Hash": "FB2AB07CC2134AC914A44C4541DCC0ECBEAE1DE0012EAE71ADAD0017E50D76DB"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\pages\\SchedulePage.tsx",
+    "Hash": "743D5BDFF303755E529694B2D201ACC6248D5720E4950A02D7C8E90F14E05A8D"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\pages\\TrainerPage.tsx",
+    "Hash": "14A16BC1A84D81182A51E1CD0DA122F85433F86ECF248BBA102B9450844D9E21"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\pages\\TrainersPage.tsx",
+    "Hash": "DFFB526EF9E5F384BE3E60FED51CCD136AB835B6BBD8B037A2EFD87AB05FC9CA"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\services\\haptics.ts",
+    "Hash": "12B6CC3C2238EAC96497F8EBA7F23C68B8D8B49916CF7B16E6DF5BF1777F0B33"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\services\\healthBridge.ts",
+    "Hash": "958456673E79E886C238B5532F4C35AA967B660034EEF1AC953B19A4F20F0365"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\services\\modalStack.ts",
+    "Hash": "31DF3848E2A6B2A8F3C32551E36A4A6B0D9D67C09CC05B9DBCF6135C531BD1FE"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\styles\\index.css",
+    "Hash": "7CB9022A4FFA6382CDE1ED233FCC0DA067910FCB8B83F2DFF0C711343B4B7352"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\styles\\motion.css",
+    "Hash": "782D51FFF8F5F592891A990E8E66FBC614CA732782541F25E05BD010E797349B"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\types\\domain.ts",
+    "Hash": "33A3E5FD26DC1473C30062C9C7DA34993D5DBDE72C0089644988F4C620475E54"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\types\\health.ts",
+    "Hash": "149286733568F236E2CFC3A97CA41268648B3A9D2BD381E30AD3F1C7DE1448F3"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\types\\motion.ts",
+    "Hash": "B91EBD7C73301D4873DA3A4EB377872D0F54693DB13E9B4A9B6563E720D237A2"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\utils\\formatters.ts",
+    "Hash": "1C83DFD8AA4E3D23FF6CF5FC05F76A14FE8A1AD8ECC767A65575F4CDE5E4D0C7"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\utils\\motion.ts",
+    "Hash": "E1CBD8D57DF56E33DFC479AD464C5897015C882151206356FE6FFCD06EC8EF31"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\utils\\viewTransitions.ts",
+    "Hash": "2C190767A009857FB8D5C7E1911E621021F15A070F2E292EF73FB80ED074757F"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\__tests__\\admin_and_booking_remediation.test.tsx",
+    "Hash": "DC6A7D2410A008BAF626F87B953E6263945052E48C21F3BED46D37FC62E74213"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\__tests__\\home_page_redesign.test.tsx",
+    "Hash": "E39DEAC3432129C9DB5D4B0BD64A9DD2A653FD5D463F99694148125636A61D7B"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\__tests__\\integrations_and_booking.test.tsx",
+    "Hash": "68424E007E22633D69B84F2F84D96350E10031DEB0BA9534A14057A1A7D17260"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\__tests__\\m02_integrations_health_sources.test.tsx",
+    "Hash": "6501F97E7A6152F18C59FE63E10C606FACEF31BEABEC86E71717CD76261B954B"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\__tests__\\m03_home_polish.test.tsx",
+    "Hash": "7064122B6E1759253BBF99C20FB4E2F97056BBFC7A8A1DFE56BF1F07ABA136C7"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\__tests__\\m04_schedule_context.test.tsx",
+    "Hash": "19A7A9847098A42CD461E3A7435CE3B8AB6BA43045DCEFAB8C17C923E22FB06F"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\__tests__\\m05_booking_flow.test.tsx",
+    "Hash": "E4C0C53BE525E204FE02CC96272CD175FB49EA6A61AEA6372ADB777C6EF60565"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\__tests__\\m06_trainers_editorial.test.tsx",
+    "Hash": "B860E45196F5BD3CCC4FF087406EEF4AFCB98765E077F7C83D35AB1056649B62"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\__tests__\\m07_trainer_profile.test.tsx",
+    "Hash": "05BEFAA9E2F759F0985BE68C4CEEB304D63FA531F676690238467BB5C01545DD"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\__tests__\\m08_progress_measurements.test.tsx",
+    "Hash": "C496C79ECD7E4821AF3DA923EE775A25048EA5208C8B60CF09218D866A59E548"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\__tests__\\m09_profile_account.test.tsx",
+    "Hash": "30AAC287060BECD7AA5C92F1F77E37C384E859C25D2A86D59B44B489A36681DD"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\__tests__\\m10_admin_composition.test.tsx",
+    "Hash": "55BEA5C1CDCC48566E8488098102846E1B0BD37A4B889DA704C6AB986F4E4ECC"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\__tests__\\m11_motion_continuity.test.tsx",
+    "Hash": "0F986A2BB6C947F1554DC4752246C489C2EFB52591959E23ADB509A38D80D525"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\__tests__\\remediation.test.tsx",
+    "Hash": "7CBD416816292317404BF708C7CB01C16F6666A3ADF73EE0DBB3582CEE69A7D5"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\__tests__\\setup.ts",
+    "Hash": "E42E5729176441E397DE0D619E1FBEAECD57B306B371DC83B00D012393421A6F"
+  }
+]

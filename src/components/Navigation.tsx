@@ -49,6 +49,7 @@ export function MobileBottomNav() {
             to={to}
             className={`mobile-nav__item ${active ? 'is-active' : ''}`}
             aria-current={active ? 'page' : undefined}
+            title={label}
           >
             <Icon size={21} className="mobile-nav__icon" aria-hidden="true" />
             <span className="mobile-nav__label">{label}</span>

@@ -1,0 +1,267 @@
+{
+  "total": 19,
+  "small": [
+    {
+      "tag": "a",
+      "text": "Железный Рюрик",
+      "width": 162,
+      "height": 37,
+      "isSmall": true,
+      "ariaLabel": "Железный Рюрик — главная",
+      "role": null,
+      "className": "brand-logo "
+    },
+    {
+      "tag": "button",
+      "text": "Читать дальше",
+      "width": 98,
+      "height": 25,
+      "isSmall": true,
+      "ariaLabel": null,
+      "role": null,
+      "className": "gym-news-feed__toggle-btn"
+    },
+    {
+      "tag": "button",
+      "text": "Перейти к новости 1",
+      "width": 8,
+      "height": 8,
+      "isSmall": true,
+      "ariaLabel": "Перейти к новости 1",
+      "role": null,
+      "className": "gym-news-feed__dot is-active"
+    },
+    {
+      "tag": "button",
+      "text": "Перейти к новости 2",
+      "width": 6,
+      "height": 6,
+      "isSmall": true,
+      "ariaLabel": "Перейти к новости 2",
+      "role": null,
+      "className": "gym-news-feed__dot "
+    },
+    {
+      "tag": "button",
+      "text": "Перейти к новости 3",
+      "width": 6,
+      "height": 6,
+      "isSmall": true,
+      "ariaLabel": "Перейти к новости 3",
+      "role": null,
+      "className": "gym-news-feed__dot "
+    },
+    {
+      "tag": "button",
+      "text": "Перейти к новости 4",
+      "width": 6,
+      "height": 6,
+      "isSmall": true,
+      "ariaLabel": "Перейти к новости 4",
+      "role": null,
+      "className": "gym-news-feed__dot "
+    },
+    {
+      "tag": "button",
+      "text": "Перейти к новости 5",
+      "width": 6,
+      "height": 6,
+      "isSmall": true,
+      "ariaLabel": "Перейти к новости 5",
+      "role": null,
+      "className": "gym-news-feed__dot "
+    }
+  ],
+  "all": [
+    {
+      "tag": "a",
+      "text": "Железный Рюрик",
+      "width": 162,
+      "height": 37,
+      "isSmall": true,
+      "ariaLabel": "Железный Рюрик — главная",
+      "role": null,
+      "className": "brand-logo "
+    },
+    {
+      "tag": "button",
+      "text": "Великий Новгород",
+      "width": 166,
+      "height": 44,
+      "isSmall": false,
+      "ariaLabel": "Выбранный клуб: Великий Новгород. Нажмите, чтобы посмотреть подробности.",
+      "role": null,
+      "className": "home-location-btn"
+    },
+    {
+      "tag": "a",
+      "text": "Подробнее",
+      "width": 358,
+      "height": 52,
+      "isSmall": false,
+      "ariaLabel": null,
+      "role": null,
+      "className": "button button--primary button--primary button--dominant hero-workout__cta"
+    },
+    {
+      "tag": "a",
+      "text": "Другое время →",
+      "width": 131,
+      "height": 44,
+      "isSmall": false,
+      "ariaLabel": null,
+      "role": null,
+      "className": "card-secondary-link hero-workout__secondary-link"
+    },
+    {
+      "tag": "a",
+      "text": "@goverrun",
+      "width": 117,
+      "height": 44,
+      "isSmall": false,
+      "ariaLabel": "Канал @goverrun в Telegram (откроется в новой вкладке)",
+      "role": null,
+      "className": "gym-news-feed__channel-link"
+    },
+    {
+      "tag": "button",
+      "text": "Читать дальше",
+      "width": 98,
+      "height": 25,
+      "isSmall": true,
+      "ariaLabel": null,
+      "role": null,
+      "className": "gym-news-feed__toggle-btn"
+    },
+    {
+      "tag": "button",
+      "text": "Предыдущая новость",
+      "width": 44,
+      "height": 44,
+      "isSmall": false,
+      "ariaLabel": "Предыдущая новость",
+      "role": null,
+      "className": "gym-news-feed__nav-btn"
+    },
+    {
+      "tag": "button",
+      "text": "Перейти к новости 1",
+      "width": 8,
+      "height": 8,
+      "isSmall": true,
+      "ariaLabel": "Перейти к новости 1",
+      "role": null,
+      "className": "gym-news-feed__dot is-active"
+    },
+    {
+      "tag": "button",
+      "text": "Перейти к новости 2",
+      "width": 6,
+      "height": 6,
+      "isSmall": true,
+      "ariaLabel": "Перейти к новости 2",
+      "role": null,
+      "className": "gym-news-feed__dot "
+    },
+    {
+      "tag": "button",
+      "text": "Перейти к новости 3",
+      "width": 6,
+      "height": 6,
+      "isSmall": true,
+      "ariaLabel": "Перейти к новости 3",
+      "role": null,
+      "className": "gym-news-feed__dot "
+    },
+    {
+      "tag": "button",
+      "text": "Перейти к новости 4",
+      "width": 6,
+      "height": 6,
+      "isSmall": true,
+      "ariaLabel": "Перейти к новости 4",
+      "role": null,
+      "className": "gym-news-feed__dot "
+    },
+    {
+      "tag": "button",
+      "text": "Перейти к новости 5",
+      "width": 6,
+      "height": 6,
+      "isSmall": true,
+      "ariaLabel": "Перейти к новости 5",
+      "role": null,
+      "className": "gym-news-feed__dot "
+    },
+    {
+      "tag": "button",
+      "text": "Следующая новость",
+      "width": 44,
+      "height": 44,
+      "isSmall": false,
+      "ariaLabel": "Следующая новость",
+      "role": null,
+      "className": "gym-news-feed__nav-btn"
+    },
+    {
+      "tag": "a",
+      "text": "К публикации",
+      "width": 143,
+      "height": 44,
+      "isSmall": false,
+      "ariaLabel": "Открыть публикацию в Telegram (откроется в новой вкладке)",
+      "role": null,
+      "className": "gym-news-feed__post-link"
+    },
+    {
+      "tag": "a",
+      "text": "Главная",
+      "width": 76,
+      "height": 47,
+      "isSmall": false,
+      "ariaLabel": null,
+      "role": null,
+      "className": "mobile-nav__item is-active"
+    },
+    {
+      "tag": "a",
+      "text": "Запись",
+      "width": 76,
+      "height": 47,
+      "isSmall": false,
+      "ariaLabel": null,
+      "role": null,
+      "className": "mobile-nav__item "
+    },
+    {
+      "tag": "a",
+      "text": "Тренеры",
+      "width": 76,
+      "height": 47,
+      "isSmall": false,
+      "ariaLabel": null,
+      "role": null,
+      "className": "mobile-nav__item "
+    },
+    {
+      "tag": "a",
+      "text": "Прогресс",
+      "width": 76,
+      "height": 47,
+      "isSmall": false,
+      "ariaLabel": null,
+      "role": null,
+      "className": "mobile-nav__item "
+    },
+    {
+      "tag": "a",
+      "text": "Профиль",
+      "width": 76,
+      "height": 47,
+      "isSmall": false,
+      "ariaLabel": null,
+      "role": null,
+      "className": "mobile-nav__item "
+    }
+  ]
+}

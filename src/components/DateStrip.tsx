@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ScheduleDay } from '../types/domain'
 import { haptics } from '../services/haptics'
 
@@ -14,7 +14,7 @@ export function DateStrip({
   const containerRef = useRef<HTMLDivElement>(null)
   const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number } | null>(null)
 
-  useLayoutEffect(() => {
+  const updateIndicator = useCallback(() => {
     if (!containerRef.current) return
     const activeBtn = containerRef.current.querySelector(
       '.date-strip__item.is-active'
@@ -26,7 +26,45 @@ export function DateStrip({
         width: activeBtn.offsetWidth,
       })
     }
-  }, [selectedId, days])
+  }, [])
+
+  useLayoutEffect(() => {
+    updateIndicator()
+    if (!containerRef.current) return
+    const activeBtn = containerRef.current.querySelector(
+      '.date-strip__item.is-active'
+    ) as HTMLElement | null
+
+    if (activeBtn && typeof activeBtn.scrollIntoView === 'function') {
+      activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+    }
+  }, [selectedId, days, updateIndicator])
+
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    let ro: ResizeObserver | null = null
+    if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
+      ro = new ResizeObserver(() => {
+        updateIndicator()
+      })
+      ro.observe(containerRef.current)
+    }
+
+    const onWindowResize = () => updateIndicator()
+    window.addEventListener('resize', onWindowResize, { passive: true })
+
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      void document.fonts.ready.then(() => {
+        updateIndicator()
+      })
+    }
+
+    return () => {
+      ro?.disconnect()
+      window.removeEventListener('resize', onWindowResize)
+    }
+  }, [updateIndicator])
 
   const handleSelect = (id: string) => {
     if (id !== selectedId) {

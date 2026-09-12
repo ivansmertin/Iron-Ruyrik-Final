@@ -13,22 +13,31 @@ interface UseCountUpOptions {
  * Uses cubic ease-out curve to mimic --motion-ease-emphasized.
  * Automatically bypassed when prefers-reduced-motion is active.
  */
+export function useCountUp(targetValue: number, options?: UseCountUpOptions): number
+export function useCountUp(targetValue: number | undefined, options?: UseCountUpOptions): number | undefined
 export function useCountUp(
-  targetValue: number,
+  targetValue: number | undefined,
   options: UseCountUpOptions = {}
-): number {
+): number | undefined {
   const { duration = MOTION_DURATIONS.reveal, decimals = 0, startVal } = options
   const prefersReduced = useReducedMotion()
 
-  const [value, setValue] = useState<number>(() => {
+  const [value, setValue] = useState<number | undefined>(() => {
+    if (targetValue === undefined) return undefined
     if (prefersReduced || duration <= 0) return targetValue
     return startVal !== undefined ? startVal : targetValue
   })
 
-  const currentValRef = useRef<number>(value)
+  const currentValRef = useRef<number | undefined>(value)
   const prevStartValRef = useRef<number | undefined>(startVal)
 
   useEffect(() => {
+    if (targetValue === undefined) {
+      setValue(undefined)
+      currentValRef.current = undefined
+      return
+    }
+
     // If reduced motion is requested or duration is 0, render target value immediately
     if (prefersReduced || duration <= 0) {
       setValue(targetValue)
@@ -42,6 +51,16 @@ export function useCountUp(
       if (startVal !== undefined) {
         currentValRef.current = startVal
         setValue(startVal)
+      }
+    }
+
+    // If previous value was undefined (first async value arrived) and no startVal, render immediately without count-up
+    if (currentValRef.current === undefined) {
+      const initial = startVal !== undefined ? startVal : targetValue
+      currentValRef.current = initial
+      setValue(initial)
+      if (initial === targetValue) {
+        return
       }
     }
 

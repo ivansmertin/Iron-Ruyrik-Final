@@ -1,11 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { IntegrationsPage } from '../pages/IntegrationsPage'
 import { Modal } from '../components/Modal'
 import { Divider } from '../components/ui'
 import { clearModalStack } from '../services/modalStack'
+
+vi.mock('../api/health', () => ({
+  getHealthSources: vi.fn().mockResolvedValue([]),
+  connectHealthSource: vi.fn().mockResolvedValue({ status: 'connected' }),
+  disconnectHealthSource: vi.fn().mockResolvedValue({ status: 'disconnected' }),
+}))
 
 function createTestQueryClient() {
   return new QueryClient({
@@ -24,15 +30,17 @@ describe('Integrations & Primitives Verification', () => {
   })
 
   describe('Integrations Reversion: Xiaomi / Zepp Life', () => {
-    it('displays Xiaomi / Zepp Life and no WHOOP reference', () => {
+    it('displays Xiaomi / Zepp Life and no WHOOP reference', async () => {
       const queryClient = createTestQueryClient()
-      render(
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter>
-            <IntegrationsPage />
-          </MemoryRouter>
-        </QueryClientProvider>
-      )
+      await act(async () => {
+        render(
+          <QueryClientProvider client={queryClient}>
+            <MemoryRouter>
+              <IntegrationsPage />
+            </MemoryRouter>
+          </QueryClientProvider>
+        )
+      })
 
       // Xiaomi / Zepp Life must be present
       expect(screen.getByText('Xiaomi / Zepp Life')).toBeDefined()

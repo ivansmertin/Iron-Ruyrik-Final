@@ -1,22 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  Activity,
   AlertCircle,
   ArrowLeft,
   Check,
   CheckCircle2,
   Clock,
-  ShieldCheck,
   UsersRound,
   X,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { cancelBooking, createBooking, getBookings } from '../api/bookings'
 import { getScheduleData } from '../api/schedule'
 import { getTrainers } from '../api/trainers'
-import { Button, ButtonLink, Card, LoadingPage, Modal } from '../components/ui'
+import { Button, ButtonLink, LoadingPage, Modal } from '../components/ui'
 import { useBookings } from '../features/bookings/BookingContext'
-import type { Booking, BookingMode, Trainer } from '../types/domain'
+import {
+  isSupportedBookingTrainer,
+  type Booking,
+  type BookingMode,
+  type TimeSlot,
+  type Trainer,
+  type TrainerId,
+} from '../types/domain'
 import { formatDateRu } from '../utils/formatters'
 import { safeStartViewTransition } from '../utils/viewTransitions'
 import { haptics } from '../services/haptics'
@@ -53,7 +60,7 @@ export function BookingPage() {
   const [params] = useSearchParams()
   const queryClient = useQueryClient()
 
-  const { data: scheduleData, isLoading: isScheduleLoading } = useQuery({
+  const { data: scheduleData, isLoading: isScheduleLoading, isError: isScheduleError } = useQuery({
     queryKey: ['schedule'],
     queryFn: getScheduleData,
   })
@@ -76,13 +83,50 @@ export function BookingPage() {
     }
   }, [])
 
-  const existingBooking =
-    bookingsQuery.data?.find((b) => b.id === id || b.slotId === id) ??
-    (createdBooking && (createdBooking.id === id || createdBooking.slotId === id)
+  // 1. Resolve route ID: strictly distinguish direct bookingId vs slotId
+  // Direct booking ID match (e.g. /booking/b-123 from Home/Profile)
+  const bookingById =
+    bookingsQuery.data?.find((b) => b.id === id) ??
+    (createdBooking && createdBooking.id === id ? createdBooking : undefined)
+
+  // Active (non-cancelled) booking by slotId (e.g. user already booked this slot)
+  const activeBookingBySlot =
+    bookingsQuery.data?.find((b) => b.slotId === id && b.status !== 'cancelled') ??
+    (createdBooking && createdBooking.slotId === id && createdBooking.status !== 'cancelled'
       ? createdBooking
       : undefined)
+
+  // Session-created booking (even if cancelled afterwards, kept for local details view)
+  const sessionBooking =
+    createdBooking && (createdBooking.id === id || createdBooking.slotId === id)
+      ? createdBooking
+      : undefined
+
+  const existingBooking = bookingById ?? activeBookingBySlot ?? sessionBooking
   const slotId = existingBooking?.slotId ?? id
   const slot = scheduleData?.slots.find((item) => item.id === slotId)
+
+  const location = useLocation()
+  const returnDate =
+    params.get('date') ??
+    (location.state as { date?: string } | null)?.date ??
+    slot?.dateId ??
+    existingBooking?.date
+  const returnTrainer =
+    params.get('trainer') ??
+    (location.state as { trainer?: string } | null)?.trainer ??
+    existingBooking?.trainerId
+  const returnParams = new URLSearchParams()
+  if (returnDate) returnParams.set('date', returnDate)
+  if (returnTrainer) returnParams.set('trainer', returnTrainer)
+  if (slotId) returnParams.set('slot', slotId)
+  const returnSearch = returnParams.toString() ? `?${returnParams.toString()}` : ''
+  const scheduleReturnUrl = `/schedule${returnSearch}`
+  const scheduleReturnState = {
+    fromSlotId: slotId,
+    date: returnDate,
+    trainer: returnTrainer,
+  }
 
   const suggestedTrainer = params.get('trainer')
   const initialMode: BookingMode =
@@ -91,34 +135,55 @@ export function BookingPage() {
   const [mode, setMode] = useState<BookingMode>(initialMode)
   type ConfirmPhase = 'idle' | 'submitting' | 'confirmed'
   const [confirmPhase, setConfirmPhase] = useState<ConfirmPhase>('idle')
+  const slotSnapshotRef = useRef<TimeSlot | null>(null)
+
+  const activeTrainers = (trainersQuery.data ?? []).filter(
+    (t): t is Trainer & { id: TrainerId } => isSupportedBookingTrainer(t.id)
+  )
+  const isSelectedTrainerAvailable = mode === 'self' || activeTrainers.some((t) => t.id === mode)
+  const effectiveMode: BookingMode = isSelectedTrainerAvailable ? mode : 'self'
+
+  useEffect(() => {
+    if (trainersQuery.isSuccess && mode !== 'self') {
+      const isPresent = (trainersQuery.data ?? []).some(
+        (t) => t.id === mode && isSupportedBookingTrainer(t.id)
+      )
+      if (!isPresent) {
+        setMode('self')
+      }
+    }
+  }, [trainersQuery.isSuccess, trainersQuery.data, mode])
 
   const refresh = async () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ['schedule'] }),
-      queryClient.invalidateQueries({ queryKey: ['bookings'] }),
       queryClient.invalidateQueries({ queryKey: ['home'] }),
       queryClient.invalidateQueries({ queryKey: ['profile'] }),
     ])
 
   const createMutation = useMutation({
-    mutationFn: () => createBooking(slot!, mode),
+    mutationFn: ({ slotToBook, modeToBook }: { slotToBook: TimeSlot; modeToBook: BookingMode }) =>
+      createBooking(slotToBook, modeToBook),
     onSuccess: (booking) => {
+      // 1. OUTCOME: Unconditionally and immediately commit to query cache and invalidate
+      // Decoupled from mounted status or visual 350ms timer
+      queryClient.setQueryData<Booking[]>(['bookings'], (old) => {
+        if (!old) return [booking]
+        return [booking, ...old.filter((b) => b.id !== booking.id)]
+      })
+      void refresh()
+
+      // 2. PRESENTATION: Local visual feedback
       void haptics.success()
 
-      // Resolve micro-phase: Show confirmation state briefly (~350ms)
-      // before committing query cache and transitioning into confirmed details view.
       if (isMountedRef.current) {
         setConfirmPhase('confirmed')
         confirmTimeoutRef.current = setTimeout(() => {
-          queryClient.setQueryData<Booking[]>(['bookings'], (old) => {
-            if (!old) return [booking]
-            return [booking, ...old.filter((b) => b.id !== booking.id)]
-          })
-          void refresh()
           if (isMountedRef.current) {
             safeStartViewTransition(() => {
               setCreatedBooking(booking)
               setConfirmPhase('idle')
+              slotSnapshotRef.current = null
             })
           }
         }, 350)
@@ -126,13 +191,17 @@ export function BookingPage() {
     },
     onError: () => {
       setConfirmPhase('idle')
+      slotSnapshotRef.current = null
     },
   })
 
   const handleConfirm = () => {
     if (!slot || confirmPhase !== 'idle') return
+    slotSnapshotRef.current = slot
+    const snapshotSlot = slot
+    const snapshotMode = effectiveMode
     setConfirmPhase('submitting')
-    createMutation.mutate()
+    createMutation.mutate({ slotToBook: snapshotSlot, modeToBook: snapshotMode })
   }
 
   const cancelMutation = useMutation({
@@ -156,39 +225,80 @@ export function BookingPage() {
 
   const displayedBooking = cancelMutation.data ?? existingBooking
 
-  if (isScheduleLoading || bookingsQuery.isLoading || trainersQuery.isLoading) {
+  // Required query loading state
+  if (isScheduleLoading || bookingsQuery.isLoading) {
     return <LoadingPage label="Загружаем детали тренировки" />
   }
 
-  // If neither booking nor slot exists
-  if (!existingBooking && !slot) {
+  // Required query error state (distinct from unknown ID)
+  if ((!scheduleData && isScheduleError) || bookingsQuery.isError) {
     return (
       <div className="page training-details-page">
-        <Link to="/schedule" className="back-link">
+        <Link to={scheduleReturnUrl} state={scheduleReturnState} className="back-link">
           <ArrowLeft size={18} aria-hidden="true" />
           <span>К расписанию</span>
         </Link>
-        <Card className="empty-card">
-          <h2>Запись не найдена</h2>
-          <p>Возможно, выбранное время больше недоступно или было удалено.</p>
-          <ButtonLink to="/schedule">К расписанию</ButtonLink>
-        </Card>
+        <div className="schedule-state schedule-state--error schedule-state-card--error" role="alert">
+          <AlertCircle size={32} className="schedule-state__icon" aria-hidden="true" />
+          <h2 className="schedule-state__title">Не удалось загрузить данные записи</h2>
+          <p className="schedule-state__text">Проверьте соединение с интернетом и попробуйте снова.</p>
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={() => {
+              void queryClient.invalidateQueries({ queryKey: ['schedule'] })
+              void queryClient.invalidateQueries({ queryKey: ['bookings'] })
+            }}
+          >
+            Повторить
+          </button>
+        </div>
       </div>
     )
   }
 
-  // --- CONFIRMED / EXISTING BOOKING DETAILS VIEW ---
-  if (existingBooking && confirmPhase !== 'confirmed') {
-    const isCancelled = displayedBooking?.status === 'cancelled'
+  // If neither booking nor slot exists (and queries succeeded)
+  if (!existingBooking && !slot) {
+    return (
+      <div className="page training-details-page">
+        <Link to={scheduleReturnUrl} state={scheduleReturnState} className="back-link">
+          <ArrowLeft size={18} aria-hidden="true" />
+          <span>К расписанию</span>
+        </Link>
+        <div className="schedule-state schedule-state--empty">
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 8px' }}>Запись не найдена</h2>
+          <p style={{ color: 'var(--text-secondary)', margin: '0 0 16px' }}>
+            Возможно, выбранное время больше недоступно или было удалено.
+          </p>
+          <ButtonLink to={scheduleReturnUrl} state={scheduleReturnState} variant="secondary">
+            К расписанию
+          </ButtonLink>
+        </div>
+      </div>
+    )
+  }
 
-    // Compute timing and past status
+  // Determine whether to show the Confirmed Details View
+  // (Only when booking exists AND not currently in the middle of submitting or holding the 350ms confirmed button)
+  const isDetailsView = Boolean(existingBooking && confirmPhase === 'idle')
+
+  // --- CONFIRMED / EXISTING BOOKING DETAILS VIEW ---
+  if (isDetailsView && existingBooking) {
     const startIso =
       slot?.startIso ?? `${existingBooking.date}T${existingBooking.startAt}:00+03:00`
+    const endIso =
+      slot?.endIso ?? `${existingBooking.date}T${existingBooking.endAt}:00+03:00`
     const startTime = new Date(startIso).getTime()
-    const now = new Date().getTime()
+    const endTime = new Date(endIso).getTime()
+    const now = Date.now()
+
+    const isCancelled = displayedBooking?.status === 'cancelled'
+    const isCompleted = !isCancelled && !isNaN(endTime) && now >= endTime
+    const isOngoing = !isCancelled && !isCompleted && !isNaN(startTime) && now >= startTime
+
+    // 4 hours cancellation window: only applicable if not past, not ongoing, not cancelled
     const minutesLeft = Math.round((startTime - now) / 60000)
-    const isPast = minutesLeft <= 0
-    const isCancellationWindowPassed = !isPast && minutesLeft < 240 // 4 hours rule
+    const isCancellationWindowPassed = isOngoing || isCompleted || minutesLeft < 240
 
     const formattedDate = formatWorkoutDate(existingBooking.date, existingBooking.dateLabel)
     const trainerMeta = existingBooking.trainerName
@@ -197,16 +307,39 @@ export function BookingPage() {
 
     const capacityText = slot
       ? `${slot.occupied} из ${slot.capacity} мест`
-      : 'До 8 человек в зале'
+      : null
+
+    let statusText = 'Запись подтверждена'
+    let statusTone = 'confirmed'
+    let StatusIcon = CheckCircle2
+
+    if (isCancelled) {
+      statusText = 'Запись отменена'
+      statusTone = 'cancelled'
+      StatusIcon = X
+    } else if (isCompleted) {
+      statusText = 'Тренировка завершена'
+      statusTone = 'completed'
+      StatusIcon = Clock
+    } else if (isOngoing) {
+      statusText = 'Тренировка идёт сейчас'
+      statusTone = 'ongoing'
+      StatusIcon = Activity
+    }
+
+    const mainAriaLabel = isCancelled
+      ? `Отмененная тренировка: ${existingBooking.title}, ${trainerMeta}, ${formattedDate} с ${existingBooking.startAt} до ${existingBooking.endAt}`
+      : isCompleted
+        ? `Завершенная тренировка: ${existingBooking.title}, ${trainerMeta}, ${formattedDate} с ${existingBooking.startAt} до ${existingBooking.endAt}`
+        : isOngoing
+          ? `Текущая тренировка: ${existingBooking.title}, ${trainerMeta}, ${formattedDate} с ${existingBooking.startAt} до ${existingBooking.endAt}`
+          : `Подтвержденная тренировка: ${existingBooking.title}, ${trainerMeta}, ${formattedDate} с ${existingBooking.startAt} до ${existingBooking.endAt}`
 
     return (
-      <div
-        className="page training-details-page"
-        aria-label={`Подтвержденная тренировка: ${existingBooking.title}, ${trainerMeta}, ${formattedDate} с ${existingBooking.startAt} до ${existingBooking.endAt}`}
-      >
+      <div className="page training-details-page" aria-label={mainAriaLabel}>
         <Link
-          to="/schedule"
-          state={{ fromSlotId: slotId }}
+          to={scheduleReturnUrl}
+          state={scheduleReturnState}
           viewTransition
           className="back-link"
           aria-label="Вернуться к расписанию"
@@ -215,30 +348,18 @@ export function BookingPage() {
           <span>К расписанию</span>
         </Link>
 
-        {/* 1. Status Indicator (Compact, Top of Screen) */}
+        {/* 1. Single Status Line (Compact, Top of Screen) */}
         <div className="training-details__status-wrap">
-          {isCancelled ? (
-            <span className="training-details__status training-details__status--cancelled">
-              <X size={13} aria-hidden="true" />
-              <span>Запись отменена</span>
-            </span>
-          ) : isPast ? (
-            <span className="training-details__status training-details__status--past">
-              <Clock size={13} aria-hidden="true" />
-              <span>Тренировка завершена</span>
-            </span>
-          ) : (
-            <span className="training-details__status training-details__status--confirmed">
-              <CheckCircle2 size={13} aria-hidden="true" />
-              <span>Запись подтверждена</span>
-            </span>
-          )}
+          <span className={`training-details__status training-details__status--${statusTone}`}>
+            <StatusIcon size={13} aria-hidden="true" />
+            <span>{statusText}</span>
+          </span>
         </div>
 
-        {/* 2. Main Workout Section (No heavy card, directly on background) */}
+        {/* 2. Hero Time (No heavy cards, open rhythm) */}
         <header className="training-details__header">
-          <span className="eyebrow training-details__eyebrow">ВАША ТРЕНИРОВКА</span>
-          <p className="training-details__date">{formattedDate}</p>
+          {/* Semantic text for accessibility and test compatibility */}
+          <span className="sr-only">ВАША ТРЕНИРОВКА</span>
           <h1
             className="training-details__time"
             style={{ viewTransitionName: 'hero-slot-time' }}
@@ -248,61 +369,54 @@ export function BookingPage() {
           </h1>
         </header>
 
-        {/* 3. Training Type, Trainer & Capacity */}
-        <div className="training-details__info">
-          <h2 className="training-details__title">{existingBooking.title}</h2>
-          <p className="training-details__meta">{trainerMeta}</p>
-
-          <div
-            className="training-details__capacity"
-            aria-label={`Заполненность зала: ${capacityText}`}
-          >
-            <UsersRound size={15} aria-hidden="true" />
-            <span>{capacityText}</span>
+        {/* 3. Facts (Date, Workout Title, Trainer, Capacity if known) */}
+        <div className="training-details__facts">
+          <p className="training-details__date">{formattedDate}</p>
+          <div className="training-details__meta-row">
+            <span className="training-details__title">{existingBooking.title}</span>
+            <span className="training-details__dot" aria-hidden="true">·</span>
+            <span className="training-details__meta">{trainerMeta}</span>
           </div>
+
+          {capacityText && (
+            <div
+              className="training-details__capacity"
+              aria-label={`Заполненность зала: ${capacityText}`}
+            >
+              <UsersRound size={15} aria-hidden="true" />
+              <span>{capacityText}</span>
+            </div>
+          )}
         </div>
 
         {/* 4. Thin Divider */}
         <div className="training-details__divider" role="separator" />
 
-        {/* 5. Pre-Workout Guidance (Border-free content section) */}
-        <section className="training-guidance" aria-labelledby="guidance-heading">
-          <div className="training-guidance__header">
-            <ShieldCheck size={16} className="training-guidance__icon" aria-hidden="true" />
-            <h3 id="guidance-heading" className="training-guidance__title">
-              ПЕРЕД ТРЕНИРОВКОЙ
-            </h3>
-          </div>
-
-          <ul className="training-guidance__list">
-            <li className="training-guidance__item">
-              <span className="training-guidance__marker" aria-hidden="true" />
-              <span>Приходите за 10 минут до начала.</span>
-            </li>
-            <li className="training-guidance__item">
-              <span className="training-guidance__marker" aria-hidden="true" />
-              <span>Возьмите сменную спортивную обувь.</span>
-            </li>
-            <li className="training-guidance__item">
-              <span className="training-guidance__marker" aria-hidden="true" />
-              <span>Если планы изменились, отмените запись заранее.</span>
-            </li>
-          </ul>
-        </section>
-
-        {/* 6. Thin Divider */}
-        <div className="training-details__divider" role="separator" />
-
-        {/* 7. Cancellation / Action Section */}
+        {/* 5. Cancellation / Management Action Section */}
         <section className="training-cancellation" aria-label="Управление записью">
           {isCancelled ? (
-            <ButtonLink to="/schedule" variant="secondary" className="training-details__action-btn">
+            <ButtonLink
+              to={scheduleReturnUrl}
+              state={scheduleReturnState}
+              variant="secondary"
+              className="training-details__action-btn"
+            >
               Выбрать другое время
             </ButtonLink>
-          ) : isPast ? (
-            <ButtonLink to="/schedule" variant="secondary" className="training-details__action-btn">
+          ) : isCompleted ? (
+            <ButtonLink
+              to={scheduleReturnUrl}
+              state={scheduleReturnState}
+              variant="secondary"
+              className="training-details__action-btn"
+            >
               Записаться снова
             </ButtonLink>
+          ) : isOngoing ? (
+            <div className="training-cancellation__warning-box">
+              <AlertCircle size={15} aria-hidden="true" />
+              <p>Тренировка идёт прямо сейчас. Отмена через приложение недоступна.</p>
+            </div>
           ) : (
             <>
               {cancelMutation.error && (
@@ -343,7 +457,11 @@ export function BookingPage() {
         {/* Confirmation Modal */}
         <Modal
           isOpen={showCancelModal}
-          onClose={() => setShowCancelModal(false)}
+          onClose={() => {
+            if (!cancelMutation.isPending) {
+              setShowCancelModal(false)
+            }
+          }}
           titleId="cancel-dialog-title"
           className="cancel-confirm-modal"
         >
@@ -353,10 +471,17 @@ export function BookingPage() {
             {formatDateRu(existingBooking.date, 'long')} в {existingBooking.startAt}?
           </p>
 
+          {cancelMutation.error && (
+            <div className="inline-error" role="alert" style={{ marginBottom: '14px' }}>
+              {cancelMutation.error.message}
+            </div>
+          )}
+
           <div className="cancel-confirm-modal__actions">
             <Button
               type="button"
               variant="secondary"
+              disabled={cancelMutation.isPending}
               onClick={() => setShowCancelModal(false)}
             >
               Оставить запись
@@ -365,10 +490,7 @@ export function BookingPage() {
               type="button"
               className="button button--danger"
               disabled={cancelMutation.isPending}
-              onClick={() => {
-                cancelMutation.mutate()
-                setShowCancelModal(false)
-              }}
+              onClick={() => cancelMutation.mutate()}
             >
               {cancelMutation.isPending ? 'Отменяем…' : 'Отменить запись'}
             </Button>
@@ -378,21 +500,38 @@ export function BookingPage() {
     )
   }
 
-  // --- NEW BOOKING CREATION VIEW (when slot is not yet booked) ---
-  const freePlaces = Math.max(0, slot!.capacity - slot!.occupied)
-  const isFull = freePlaces <= 0 || slot!.isBlocked
-  const formattedDate = formatWorkoutDate(slot!.date, slot!.dateLabel)
+  // --- NEW BOOKING CREATION VIEW (when slot is open to book or being confirmed) ---
+  const activeSlot = confirmPhase !== 'idle' && slotSnapshotRef.current ? slotSnapshotRef.current : slot
+  const startIso = activeSlot?.startIso ?? ''
+  const startTime = startIso ? new Date(startIso).getTime() : NaN
+  const now = Date.now()
+  const isPast = !isNaN(startTime) && now >= startTime
+  const isBlocked = activeSlot?.isBlocked ?? false
+  const freePlaces = activeSlot ? Math.max(0, activeSlot.capacity - activeSlot.occupied) : 0
+  const isFull = freePlaces <= 0
+  // Presentation of submitting or confirmed hold (350ms) has absolute priority over live availability changes
+  const isUnavailable = confirmPhase === 'idle' && (isBlocked || isPast || isFull)
+
+  let unavailableReason = ''
+  if (isBlocked) {
+    unavailableReason = 'Зал закрыт на это время. Пожалуйста, выберите другой интервал в расписании.'
+  } else if (isPast) {
+    unavailableReason = 'Это время уже прошло или тренировка уже началась. Пожалуйста, выберите будущее время в расписании.'
+  } else if (isFull) {
+    unavailableReason = 'Все места заняты. Пожалуйста, выберите другой интервал в расписании.'
+  }
+
+  const formattedDate = activeSlot ? formatWorkoutDate(activeSlot.date, activeSlot.dateLabel) : ''
   const capacityLabel = `60 мин · ${formatCapacity(freePlaces)}`
-  const activeTrainers = trainersQuery.data ?? []
 
   return (
     <div
       className="page training-details-page"
-      aria-label={`Запись на тренировку: ${formattedDate} с ${slot!.startAt} до ${slot!.endAt}`}
+      aria-label={`Запись на тренировку: ${formattedDate} с ${slot?.startAt} до ${slot?.endAt}`}
     >
       <Link
-        to="/schedule"
-        state={{ fromSlotId: slotId }}
+        to={scheduleReturnUrl}
+        state={scheduleReturnState}
         viewTransition
         className="back-link"
         aria-label="Вернуться к расписанию"
@@ -412,9 +551,9 @@ export function BookingPage() {
         <h1
           className="training-details__time"
           style={{ viewTransitionName: 'hero-slot-time' }}
-          aria-label={`Время: с ${slot!.startAt} до ${slot!.endAt}`}
+          aria-label={`Время: с ${slot?.startAt} до ${slot?.endAt}`}
         >
-          {slot!.startAt}–{slot!.endAt}
+          {slot?.startAt}–{slot?.endAt}
         </h1>
       </header>
 
@@ -430,47 +569,87 @@ export function BookingPage() {
 
       <div className="training-details__divider" role="separator" />
 
-      {!isFull ? (
+      {!isUnavailable ? (
         <>
-          <section className="booking-mode" aria-labelledby="booking-mode-heading">
-            <h2 id="booking-mode-heading" className="booking-mode__title">
+          <fieldset
+            className="booking-mode"
+            style={{ border: 'none', padding: 0, margin: 0 }}
+            aria-labelledby="booking-mode-heading"
+          >
+            <legend id="booking-mode-heading" className="booking-mode__title">
               Как будете заниматься?
-            </h2>
-            <div className="booking-options" role="radiogroup" aria-label="Формат тренировки">
-              <button
-                type="button"
-                role="radio"
-                aria-checked={mode === 'self'}
-                className={`booking-option motion-pressable ${mode === 'self' ? 'is-selected' : ''}`}
-                onClick={() => {
-                  setMode('self')
-                  void haptics.selection()
-                }}
+            </legend>
+
+            {trainersQuery.isError && (
+              <div className="inline-error" role="alert" style={{ marginBottom: '12px' }}>
+                <p style={{ margin: '0 0 8px' }}>
+                  Не удалось загрузить список тренеров. Вы можете записаться самостоятельно или повторить попытку.
+                </p>
+                <button
+                  type="button"
+                  className="button button--sm button--secondary"
+                  onClick={() => void trainersQuery.refetch()}
+                >
+                  Повторить загрузку тренеров
+                </button>
+              </div>
+            )}
+
+            <div className="booking-options" role="radiogroup" aria-labelledby="booking-mode-heading">
+              <label
+                className={`booking-option motion-pressable ${effectiveMode === 'self' ? 'is-selected' : ''} ${
+                  confirmPhase !== 'idle' ? 'is-disabled' : ''
+                }`}
               >
+                <input
+                  type="radio"
+                  name="booking-mode"
+                  value="self"
+                  checked={effectiveMode === 'self'}
+                  disabled={confirmPhase !== 'idle'}
+                  onChange={() => {
+                    setMode('self')
+                    void haptics.selection()
+                  }}
+                  className="booking-option__input"
+                />
                 <div className="booking-option__content">
                   <span className="booking-option__name">Самостоятельно</span>
                   <span className="booking-option__subtitle">Без тренера</span>
                 </div>
                 <span className="booking-option__radio" aria-hidden="true">
-                  {mode === 'self' && <Check size={14} strokeWidth={3} />}
+                  {effectiveMode === 'self' && <Check size={14} strokeWidth={3} />}
                 </span>
-              </button>
+              </label>
+
+              {trainersQuery.data && trainersQuery.data.length === 0 && !trainersQuery.isError && (
+                <div className="inline-note" style={{ margin: '4px 0 8px' }}>
+                  Нет доступных тренеров на это время. Доступна самостоятельная тренировка.
+                </div>
+              )}
 
               {activeTrainers.map((trainer) => {
-                const isSelected = mode === trainer.id
+                const isSelected = effectiveMode === trainer.id
                 const subtitle = getTrainerSubtitle(trainer)
                 return (
-                  <button
+                  <label
                     key={trainer.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    className={`booking-option motion-pressable ${isSelected ? 'is-selected' : ''}`}
-                    onClick={() => {
-                      setMode(trainer.id)
-                      void haptics.selection()
-                    }}
+                    className={`booking-option motion-pressable ${isSelected ? 'is-selected' : ''} ${
+                      confirmPhase !== 'idle' ? 'is-disabled' : ''
+                    }`}
                   >
+                    <input
+                      type="radio"
+                      name="booking-mode"
+                      value={trainer.id}
+                      checked={isSelected}
+                      disabled={confirmPhase !== 'idle'}
+                      onChange={() => {
+                        setMode(trainer.id)
+                        void haptics.selection()
+                      }}
+                      className="booking-option__input"
+                    />
                     <div className="booking-option__content">
                       <span className="booking-option__name">{trainer.name}</span>
                       <span className="booking-option__subtitle">{subtitle}</span>
@@ -478,11 +657,11 @@ export function BookingPage() {
                     <span className="booking-option__radio" aria-hidden="true">
                       {isSelected && <Check size={14} strokeWidth={3} />}
                     </span>
-                  </button>
+                  </label>
                 )
               })}
             </div>
-          </section>
+          </fieldset>
 
           <div className="booking-actions">
             {createMutation.error && (
@@ -513,9 +692,14 @@ export function BookingPage() {
       ) : (
         <div className="booking-actions">
           <div className="inline-error" role="status">
-            Это время уже заполнено. Пожалуйста, выберите другой интервал в расписании.
+            {unavailableReason}
           </div>
-          <ButtonLink to="/schedule" variant="secondary" className="booking-submit-btn">
+          <ButtonLink
+            to={scheduleReturnUrl}
+            state={scheduleReturnState}
+            variant="secondary"
+            className="booking-submit-btn"
+          >
             Выбрать другое время
           </ButtonLink>
         </div>

@@ -1,69 +1,84 @@
 import { useQuery } from '@tanstack/react-query'
-import { Bell, ChevronRight, LogOut, MapPin, Settings, ShieldCheck, UserRound, Watch, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import {
+  AlertCircle,
+  Bell,
+  ChevronRight,
+  Info,
+  LogOut,
+  MapPin,
+  ShieldCheck,
+  UserRound,
+  Watch,
+  X,
+} from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { MembershipCard } from '../components/MembershipCard'
-import { Button, Divider, LoadingPage, Modal, PageHeader, Section, SectionHeader } from '../components/ui'
 import { getProfileData } from '../api/profile'
-import { haptics } from '../services/haptics'
+import { MembershipCard } from '../components/MembershipCard'
+import {
+  Divider,
+  Modal,
+  PageHeader,
+  Section,
+  SectionHeader,
+  Skeleton,
+} from '../components/ui'
 
 export function ProfilePage() {
-  const { data, isLoading } = useQuery({ queryKey: ['profile'], queryFn: getProfileData })
-
-  const [notifications, setNotifications] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ryrik_notifications_enabled')
-      return saved !== null ? (JSON.parse(saved) as boolean) : true
-    } catch {
-      return true
-    }
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['profile'],
+    queryFn: getProfileData,
   })
 
-  const [isPushDenied, setIsPushDenied] = useState(false)
   const [showAllHistory, setShowAllHistory] = useState(false)
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const [showAbout, setShowAbout] = useState(false)
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      if (Notification.permission === 'denied') {
-        setIsPushDenied(true)
-      }
-    }
-  }, [])
+  if (isLoading) {
+    return (
+      <div className="page profile-page" aria-busy="true" aria-label="Загрузка профиля">
+        <PageHeader title="Профиль" />
+        <Skeleton className="profile-identity-skeleton" aria-hidden="true" />
+        <Skeleton className="membership-skeleton" aria-hidden="true" />
+        <Skeleton className="history-skeleton" aria-hidden="true" />
+      </div>
+    )
+  }
 
-  if (isLoading || !data) return <LoadingPage label="Загружаем профиль" />
+  if (isError || !data) {
+    return (
+      <div className="page profile-page">
+        <PageHeader title="Профиль" />
+        <div className="schedule-state-card schedule-state-card--error" role="alert">
+          <AlertCircle size={32} className="schedule-state-card__icon" aria-hidden="true" />
+          <h3 className="schedule-state-card__title">Не удалось загрузить данные профиля</h3>
+          <p className="schedule-state-card__text">Проверьте соединение с интернетом и попробуйте снова.</p>
+          <button type="button" className="button button--primary" onClick={() => refetch()}>
+            Повторить
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const isAdmin = data.user.role === 'admin'
   const visibleHistory = data.history.slice(0, 3)
-
-  const toggleNotifications = () => {
-    if (isPushDenied) return
-    void haptics.selection()
-    setNotifications((prev) => {
-      const next = !prev
-      try {
-        localStorage.setItem('ryrik_notifications_enabled', JSON.stringify(next))
-      } catch {
-        // ignore storage errors
-      }
-      return next
-    })
-  }
 
   return (
     <div className="page profile-page">
       <PageHeader title="Профиль" />
 
-      {/* 1. User Identity Section (cardless) */}
-      <Section className="profile-identity-section" aria-label={`Профиль: ${data.user.name}, ${data.user.city}`}>
+      {/* 1. User Identity Section (cardless row layout) */}
+      <Section
+        className="profile-identity-section"
+        aria-label={`Профиль: ${data.user.name}, ${data.user.city}`}
+      >
         <div className="profile-avatar" aria-hidden="true">
           <UserRound size={26} />
         </div>
         <div className="profile-identity__info">
-          <span className="eyebrow">СПОРТСМЕН</span>
-          <h2>{data.user.name}</h2>
-          <span>
+          <span className="eyebrow">{isAdmin ? 'АДМИНИСТРАТОР' : 'СПОРТСМЕН'}</span>
+          <h2 className="profile-identity__name">{data.user.name}</h2>
+          <span className="profile-identity__city">
             <MapPin size={14} aria-hidden="true" /> {data.user.city}
           </span>
         </div>
@@ -124,9 +139,9 @@ export function ProfilePage() {
       <Divider />
 
       {/* 4. Settings Section */}
-      <Section aria-label="Настройки" className="profile-settings-section">
-        <SectionHeader title="Настройки" eyebrow="СИСТЕМА" />
-        <div className="settings-list cardless-settings-list" role="region" aria-label="Настройки">
+      <Section aria-label="Сервисы и система" className="profile-settings-section">
+        <SectionHeader title="Сервисы и система" eyebrow="СИСТЕМА" />
+        <div className="settings-list cardless-settings-list" role="region" aria-label="Сервисы и система">
           {/* Admin panel item ONLY shown to admins */}
           {isAdmin && (
             <Link to="/admin" className="settings-row" aria-label="Перейти в админ-панель">
@@ -139,36 +154,7 @@ export function ProfilePage() {
             </Link>
           )}
 
-          {/* Notifications toggle row */}
-          <button
-            type="button"
-            className={`settings-row ${isPushDenied ? 'is-disabled' : ''}`}
-            onClick={toggleNotifications}
-            disabled={isPushDenied}
-            role="switch"
-            aria-checked={!isPushDenied && notifications}
-            aria-label={`Уведомления о тренировках, ${
-              isPushDenied ? 'запрещены в настройках устройства' : notifications ? 'включены' : 'выключены'
-            }`}
-          >
-            <Bell size={20} aria-hidden="true" />
-            <span>
-              Уведомления
-              <small>
-                {isPushDenied
-                  ? 'Уведомления запрещены в настройках устройства'
-                  : 'Напоминания о тренировках'}
-              </small>
-            </span>
-            <span
-              className={`switch ${!isPushDenied && notifications ? 'is-on' : ''} ${
-                isPushDenied ? 'is-disabled' : ''
-              }`}
-              aria-hidden="true"
-            />
-          </button>
-
-          {/* Integrations row */}
+          {/* Integrations row (M02 real entry point) */}
           <Link to="/integrations" className="settings-row" aria-label="Подключить фитнес-трекеры и весы">
             <Watch size={20} aria-hidden="true" />
             <span>
@@ -178,39 +164,58 @@ export function ProfilePage() {
             <ChevronRight size={19} aria-hidden="true" />
           </Link>
 
-          {/* Application settings row */}
+          {/* Notifications: honest unavailable state without fake toggle */}
+          <div
+            className="settings-row is-disabled"
+            role="group"
+            aria-label="Уведомления о тренировках: недоступно в веб-версии"
+          >
+            <Bell size={20} aria-hidden="true" />
+            <span>
+              Уведомления
+              <small>Недоступно в веб-версии · Требуется приложение</small>
+            </span>
+            <span className="settings-badge" aria-hidden="true">
+              Недоступно
+            </span>
+          </div>
+
+          {/* About Application: renamed from "Настройки", reveals version info */}
           <button
             type="button"
             className="settings-row motion-pressable"
-            onClick={() => setMessage('Приложение «Железный Рюрик» · Версия 0.1.0 · Великий Новгород')}
-            aria-label="Открыть настройки приложения"
+            onClick={() => setShowAbout((prev) => !prev)}
+            aria-expanded={showAbout}
+            aria-label="О приложении: сведения о версии и зале"
           >
-            <Settings size={20} aria-hidden="true" />
-            <span>Настройки</span>
+            <Info size={20} aria-hidden="true" />
+            <span>
+              О приложении
+              <small>Версия 0.1.0 · Великий Новгород</small>
+            </span>
             <ChevronRight size={19} aria-hidden="true" />
           </button>
+
+          {/* Logout boundary: honest disabled state without fake modal */}
+          <div
+            className="settings-row is-disabled"
+            role="group"
+            aria-label="Выход из профиля: автономный режим"
+          >
+            <LogOut size={20} aria-hidden="true" />
+            <span>
+              Выход из профиля
+              <small>Автономный режим без серверной авторизации</small>
+            </span>
+          </div>
         </div>
       </Section>
 
-      {message && (
+      {showAbout && (
         <p className="inline-note" role="status">
-          {message}
+          Приложение «Железный Рюрик» · Версия 0.1.0 · Великий Новгород, ул. Большая Санкт-Петербургская
         </p>
       )}
-
-      {/* 5. Logout Button (Semantic destructive, visually separated) */}
-      <Button
-        variant="ghost"
-        className="logout-button motion-pressable"
-        onClick={() => {
-          void haptics.warning()
-          setShowLogoutConfirm(true)
-        }}
-        aria-label="Выйти из аккаунта"
-      >
-        <LogOut size={18} aria-hidden="true" />
-        <span>Выйти</span>
-      </Button>
 
       {/* Full History Modal */}
       <Modal
@@ -231,7 +236,7 @@ export function ProfilePage() {
           </button>
         </div>
         <div className="history-modal__body">
-          <div className="history-list history-list--modal">
+          <div className="history-list cardless-history-list">
             {data.history.map((item) => (
               <div key={item.id} className="history-row">
                 <div className="history-row__datetime">
@@ -244,34 +249,6 @@ export function ProfilePage() {
               </div>
             ))}
           </div>
-        </div>
-      </Modal>
-
-      {/* Logout Confirmation Dialog */}
-      <Modal
-        isOpen={showLogoutConfirm}
-        onClose={() => setShowLogoutConfirm(false)}
-        titleId="logout-dialog-title"
-        className="logout-modal"
-      >
-        <h2 id="logout-dialog-title">Выход из аккаунта</h2>
-        <p>Вы действительно хотите выйти из профиля «{data.user.name}»?</p>
-        <div className="logout-modal__actions">
-          <Button
-            variant="secondary"
-            onClick={() => setShowLogoutConfirm(false)}
-          >
-            Отмена
-          </Button>
-          <Button
-            variant="danger"
-            onClick={() => {
-              setShowLogoutConfirm(false)
-              setMessage('В прототипе вы остаётесь в профиле Алексея')
-            }}
-          >
-            Выйти
-          </Button>
         </div>
       </Modal>
     </div>

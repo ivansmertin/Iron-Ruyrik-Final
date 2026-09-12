@@ -6,8 +6,13 @@ backend/.venv/
 **/__pycache__/
 *.py[cod]
 .pytest_cache/
+**/.pytest_cache/
+**/pytest-cache/
 .pytest_temp/
 backend/.pytest_temp/
+**/pytest-temp/
+**/review_r3/pytest-cache/
+**/review_r3/pytest-temp/
 data/*.db
 data/*.db-wal
 data/*.db-shm

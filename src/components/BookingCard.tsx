@@ -9,9 +9,27 @@ import { formatHeroSemanticDate, pluralize } from '../utils/formatters'
 interface BookingCardProps {
   booking: Booking | null
   nextSlot?: TimeSlot | null
+  isScheduleError?: boolean
+  onRetrySchedule?: () => void
 }
 
-export function BookingCard({ booking, nextSlot }: BookingCardProps) {
+function calculateDurationMinutes(startAt?: string, endAt?: string): number {
+  if (!startAt || !endAt) return 60
+  const [startH, startM] = startAt.split(':').map(Number)
+  const [endH, endM] = endAt.split(':').map(Number)
+  if (Number.isFinite(startH) && Number.isFinite(startM) && Number.isFinite(endH) && Number.isFinite(endM)) {
+    const diff = (endH * 60 + endM) - (startH * 60 + startM)
+    if (diff > 0) return diff
+  }
+  return 60
+}
+
+export function BookingCard({
+  booking,
+  nextSlot,
+  isScheduleError = false,
+  onRetrySchedule,
+}: BookingCardProps) {
   const currentTimeString = booking
     ? `${booking.startAt}–${booking.endAt}`
     : nextSlot
@@ -34,6 +52,7 @@ export function BookingCard({ booking, nextSlot }: BookingCardProps) {
   // 1. Пользователь уже записан (Booked State)
   if (booking) {
     const semanticDate = formatHeroSemanticDate(booking.date) || booking.dateLabel
+    const duration = calculateDurationMinutes(booking.startAt, booking.endAt)
 
     return (
       <div
@@ -60,7 +79,7 @@ export function BookingCard({ booking, nextSlot }: BookingCardProps) {
         <div className="hero-workout__details">
           <h2 className="hero-workout__title">{booking.title}</h2>
           <p className="hero-workout__meta">
-            {booking.trainerName ?? 'Самостоятельно'} · 60 мин
+            {booking.trainerName ?? 'Самостоятельно'} · {duration} мин
           </p>
         </div>
 
@@ -84,11 +103,57 @@ export function BookingCard({ booking, nextSlot }: BookingCardProps) {
     )
   }
 
-  // 2. Пользователь еще не записан (есть свободные места)
+  // 2. Ошибка загрузки расписания (когда активной записи нет)
+  if (isScheduleError) {
+    return (
+      <div
+        className="hero-workout hero-workout--error"
+        role="region"
+        aria-label="Ошибка загрузки расписания"
+      >
+        <div className="hero-workout__header">
+          <span className="eyebrow hero-workout__eyebrow">БЛИЖАЙШАЯ ТРЕНИРОВКА</span>
+        </div>
+
+        <div className="hero-workout__details hero-workout__details--empty">
+          <div className="hero-workout__notice hero-workout__notice--error" role="status">
+            <AlertCircle size={16} aria-hidden="true" />
+            <span>Не удалось загрузить расписание</span>
+          </div>
+          <p className="hero-workout__meta">
+            Проверьте соединение с интернетом и попробуйте обновить
+          </p>
+        </div>
+
+        <div className="hero-workout__actions">
+          {onRetrySchedule ? (
+            <button
+              type="button"
+              className="button button--primary button--dominant hero-workout__cta"
+              onClick={onRetrySchedule}
+            >
+              Повторить
+            </button>
+          ) : (
+            <ButtonLink
+              to="/schedule"
+              viewTransition
+              className="button--primary button--dominant hero-workout__cta"
+            >
+              Перейти к расписанию
+            </ButtonLink>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // 3. Пользователь еще не записан (есть свободные места)
   if (nextSlot && nextSlot.occupied < nextSlot.capacity && !nextSlot.isBlocked) {
     const free = nextSlot.capacity - nextSlot.occupied
     const semanticDate = formatHeroSemanticDate(nextSlot.date, nextSlot.startIso) || nextSlot.dateLabel
     const capacityText = `${free} ${pluralize(free, 'место', 'места', 'мест')} на тренировку`
+    const duration = calculateDurationMinutes(nextSlot.startAt, nextSlot.endAt)
 
     return (
       <div className="hero-workout hero-workout--available">
@@ -107,8 +172,8 @@ export function BookingCard({ booking, nextSlot }: BookingCardProps) {
         </div>
 
         <div className="hero-workout__details">
-          <h2 className="hero-workout__title">Силовая тренировка</h2>
-          <p className="hero-workout__meta">Ваня · 60 мин</p>
+          <h2 className="hero-workout__title">Тренировка в зале</h2>
+          <p className="hero-workout__meta">{duration} мин · Тренер или самостоятельно</p>
         </div>
 
         <div className="hero-workout__actions">
@@ -131,9 +196,10 @@ export function BookingCard({ booking, nextSlot }: BookingCardProps) {
     )
   }
 
-  // 3. Нет свободных мест
+  // 4. Нет свободных мест
   if (nextSlot && (nextSlot.occupied >= nextSlot.capacity || nextSlot.isBlocked)) {
     const semanticDate = formatHeroSemanticDate(nextSlot.date, nextSlot.startIso) || nextSlot.dateLabel
+    const duration = calculateDurationMinutes(nextSlot.startAt, nextSlot.endAt)
 
     return (
       <div className="hero-workout hero-workout--full">
@@ -154,8 +220,8 @@ export function BookingCard({ booking, nextSlot }: BookingCardProps) {
         </div>
 
         <div className="hero-workout__details">
-          <h2 className="hero-workout__title">Силовая тренировка</h2>
-          <p className="hero-workout__meta">Ваня · 60 мин</p>
+          <h2 className="hero-workout__title">Тренировка в зале</h2>
+          <p className="hero-workout__meta">{duration} мин</p>
         </div>
 
         <div className="hero-workout__actions">
@@ -176,7 +242,7 @@ export function BookingCard({ booking, nextSlot }: BookingCardProps) {
     )
   }
 
-  // 4. Нет ближайшей тренировки (Empty State)
+  // 5. Нет ближайшей тренировки (Empty State)
   return (
     <div className="hero-workout hero-workout--empty">
       <div className="hero-workout__header">

@@ -98,6 +98,10 @@ describe('Codex P1 Remediation Verification', () => {
 
   describe('P1 #1A: Booking Confirmed Phase Timing', () => {
     it('holds confirmed phase (✓ Запись подтверждена) for 350ms before transitioning to details view', async () => {
+      // Freeze Date to 2026-09-08 06:00 before render (leaving setTimeout real for findByRole)
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-09-08T06:00:00+03:00'))
+
       const queryClient = createTestQueryClient()
 
       render(
@@ -120,7 +124,7 @@ describe('Codex P1 Remediation Verification', () => {
       // Ensure details view is not yet present
       expect(screen.queryByText(/ВАША ТРЕНИРОВКА/i)).toBeNull()
 
-      // 2. Setup fake timers and trigger booking creation
+      // 2. Enable fake timers for setTimeout and trigger booking creation
       vi.useFakeTimers()
 
       await act(async () => {

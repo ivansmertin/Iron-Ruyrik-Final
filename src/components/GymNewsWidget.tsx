@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getGymNews } from '../api/news'
 import { Skeleton } from './ui'
 
@@ -59,6 +59,20 @@ export function GymNewsWidget() {
   const [isExpanded, setIsExpanded] = useState(false)
   const [imageFailed, setImageFailed] = useState(false)
 
+  const posts = data?.posts && data.posts.length > 0 ? data.posts.slice(0, 5) : []
+  const safeActiveIndex = posts.length > 0 ? Math.min(activeIndex, posts.length - 1) : 0
+  const currentPost = posts[safeActiveIndex] ?? null
+
+  useEffect(() => {
+    if (posts.length > 0 && activeIndex >= posts.length) {
+      setActiveIndex(posts.length - 1)
+    }
+  }, [posts.length, activeIndex])
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [currentPost?.id])
+
   if (isLoading) {
     return (
       <section className="gym-news-feed gym-news-feed--skeleton" aria-label="Новости зала">
@@ -82,7 +96,6 @@ export function GymNewsWidget() {
     )
   }
 
-  const posts = data?.posts && data.posts.length > 0 ? data.posts.slice(0, 5) : []
   const channelUrl = data?.channelUrl ?? 'https://t.me/goverrun'
   const channelHandle = data?.channelHandle ?? '@goverrun'
   const authorName = data?.authorName || 'Дмитрий Говер'
@@ -94,9 +107,43 @@ export function GymNewsWidget() {
     .join('')
     .slice(0, 2)
     .toUpperCase() || 'ДГ'
-  const currentPost = posts[activeIndex] ?? null
 
-  if (!currentPost || isError) {
+  if (isError) {
+    return (
+      <section className="gym-news-feed" aria-label="Новости зала">
+        <div className="gym-news-feed__header">
+          <span className="eyebrow gym-news-feed__eyebrow">НОВОСТИ ЗАЛА</span>
+          <a
+            href={channelUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="gym-news-feed__channel-link"
+            aria-label={`Канал ${channelHandle} в Telegram (откроется в новой вкладке)`}
+          >
+            <TelegramIcon size={14} />
+            <span>{channelHandle}</span>
+            <ExternalLink size={12} aria-hidden="true" />
+          </a>
+        </div>
+        <div className="gym-news-feed__fallback">
+          <p className="gym-news-feed__fallback-text">
+            Не удалось загрузить новости. Свежие обновления доступны в канале зала.
+          </p>
+          <a
+            href={channelUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="button button--secondary gym-news-feed__btn"
+          >
+            <TelegramIcon size={16} />
+            <span>Перейти в {channelHandle}</span>
+          </a>
+        </div>
+      </section>
+    )
+  }
+
+  if (posts.length === 0 || !currentPost) {
     return (
       <section className="gym-news-feed" aria-label="Новости зала">
         <div className="gym-news-feed__header">
@@ -124,7 +171,7 @@ export function GymNewsWidget() {
             className="button button--secondary gym-news-feed__btn"
           >
             <TelegramIcon size={16} />
-            <span>Перейти в @goverrun</span>
+            <span>Перейти в {channelHandle}</span>
           </a>
         </div>
       </section>
@@ -141,13 +188,11 @@ export function GymNewsWidget() {
   const hasImage = Boolean(currentPost.imageUrl) && !imageFailed
 
   const handlePrev = () => {
-    setImageFailed(false)
     setIsExpanded(false)
     setActiveIndex((prev) => (prev > 0 ? prev - 1 : posts.length - 1))
   }
 
   const handleNext = () => {
-    setImageFailed(false)
     setIsExpanded(false)
     setActiveIndex((prev) => (prev < posts.length - 1 ? prev + 1 : 0))
   }
@@ -204,6 +249,7 @@ export function GymNewsWidget() {
               <button
                 type="button"
                 className="gym-news-feed__toggle-btn"
+                aria-expanded={isExpanded}
                 onClick={() => setIsExpanded((prev) => !prev)}
               >
                 {isExpanded ? 'Свернуть' : 'Читать дальше'}
@@ -224,18 +270,16 @@ export function GymNewsWidget() {
               >
                 <ChevronLeft size={16} />
               </button>
-              <div className="gym-news-feed__dots">
+              <div
+                className="gym-news-feed__dots-indicator"
+                role="status"
+                aria-label={`Новость ${safeActiveIndex + 1} из ${posts.length}`}
+              >
                 {posts.map((_, idx) => (
-                  <button
+                  <span
                     key={idx}
-                    type="button"
-                    className={`gym-news-feed__dot ${idx === activeIndex ? 'is-active' : ''}`}
-                    onClick={() => {
-                      setImageFailed(false)
-                      setIsExpanded(false)
-                      setActiveIndex(idx)
-                    }}
-                    aria-label={`Перейти к новости ${idx + 1}`}
+                    className={`gym-news-feed__dot ${idx === safeActiveIndex ? 'is-active' : ''}`}
+                    aria-hidden="true"
                   />
                 ))}
               </div>

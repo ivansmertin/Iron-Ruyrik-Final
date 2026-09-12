@@ -2,6 +2,10 @@ export type TrainerId = 'dima' | 'vanya'
 export type BookingStatus = 'confirmed' | 'cancelled' | 'completed' | 'no_show'
 export type BookingMode = 'self' | TrainerId
 
+export function isSupportedBookingTrainer(id: string): id is TrainerId {
+  return id === 'dima' || id === 'vanya'
+}
+
 export interface User {
   id: string
   name: string
@@ -11,7 +15,7 @@ export interface User {
 }
 
 export interface Trainer {
-  id: TrainerId
+  id: string
   name: string
   specialties: string[]
   about: string
@@ -47,6 +51,7 @@ export interface Membership {
 export interface Measurement {
   id: string
   date: string
+  measuredAt?: string
   weight: number
   bodyFat?: number
   muscleMass?: number

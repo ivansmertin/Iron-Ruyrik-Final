@@ -1,0 +1,271 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index 23b9c07..1baa7a7 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,5 +1,13 @@
+-import { Route, Routes } from 'react-router-dom'
++/* eslint-disable react-refresh/only-export-components */
++import {
++  createBrowserRouter,
++  createRoutesFromElements,
++  Outlet,
++  Route,
++  RouterProvider,
++} from 'react-router-dom'
+ import { AppShell } from './components/AppShell'
++import { BookingProvider } from './features/bookings/BookingContext'
+ import { AdminPage } from './pages/AdminPage'
+ import { BookingPage } from './pages/BookingPage'
+ import { HomePage } from './pages/HomePage'
+@@ -11,22 +19,35 @@ import { SchedulePage } from './pages/SchedulePage'
+ import { TrainerPage } from './pages/TrainerPage'
+ import { TrainersPage } from './pages/TrainersPage'
+ 
+-export default function App() {
++function RootLayout() {
+   return (
+-    <Routes>
+-      <Route element={<AppShell />}>
+-        <Route index element={<HomePage />} />
+-        <Route path="schedule" element={<SchedulePage />} />
+-        <Route path="trainers" element={<TrainersPage />} />
+-        <Route path="trainers/:id" element={<TrainerPage />} />
+-        <Route path="booking/:id" element={<BookingPage />} />
+-        <Route path="progress" element={<ProgressPage />} />
+-        <Route path="profile" element={<ProfilePage />} />
+-        <Route path="integrations" element={<IntegrationsPage />} />
+-        <Route path="404" element={<NotFoundPage />} />
+-        <Route path="*" element={<NotFoundPage />} />
+-      </Route>
+-      <Route path="admin" element={<AdminPage />} />
+-    </Routes>
++    <BookingProvider>
++      <Outlet />
++    </BookingProvider>
+   )
+ }
++
++export const routes = createRoutesFromElements(
++  <Route element={<RootLayout />}>
++    <Route element={<AppShell />}>
++      <Route index element={<HomePage />} />
++      <Route path="schedule" element={<SchedulePage />} />
++      <Route path="trainers" element={<TrainersPage />} />
++      <Route path="trainers/:id" element={<TrainerPage />} />
++      <Route path="booking/:id" element={<BookingPage />} />
++      <Route path="progress" element={<ProgressPage />} />
++      <Route path="profile" element={<ProfilePage />} />
++      <Route path="integrations" element={<IntegrationsPage />} />
++      <Route path="404" element={<NotFoundPage />} />
++      <Route path="*" element={<NotFoundPage />} />
++    </Route>
++    <Route path="admin" element={<AdminPage />} />
++  </Route>
++)
++
++export const router = createBrowserRouter(routes)
++
++export default function App() {
++  return <RouterProvider router={router} />
++}
++
+diff --git a/src/api/progress.ts b/src/api/progress.ts
+index b499f1f..420b1f1 100644
+--- a/src/api/progress.ts
++++ b/src/api/progress.ts
+@@ -12,45 +12,23 @@ export interface ProgressPageData {
+ }
+ 
+ export async function getProgressData(): Promise<ProgressPageData> {
+-  try {
+-    const health = await apiRequest<HealthProgress>('/health/progress')
+-    const measurements: Measurement[] = health.weightSeries.map((pt) => ({
+-      id: pt.id,
+-      date: pt.date,
+-      weight: pt.value,
+-      provenanceLabel: pt.provenanceLabel,
+-      sourceProvider: pt.sourceProvider,
+-      sourceDevice: pt.sourceDevice || undefined,
+-    }))
++  const health = await apiRequest<HealthProgress>('/health/progress')
++  const measurements: Measurement[] = (health.weightSeries ?? []).map((pt) => ({
++    id: pt.id,
++    date: pt.date,
++    measuredAt: pt.measuredAt || pt.date,
++    weight: pt.value,
++    provenanceLabel: pt.provenanceLabel,
++    sourceProvider: pt.sourceProvider,
++    sourceDevice: pt.sourceDevice || undefined,
++  }))
+ 
+-    return {
+-      measurements,
+-      visitsThisMonth: health.visitsThisMonth,
+-      consistentWeeks: health.consistentWeeks,
+-      latestWeightSummary: health.latestWeight,
+-      latestBodyFatSummary: health.latestBodyFat,
+-      latestMuscleMassSummary: health.latestMuscleMass,
+-    }
+-  } catch {
+-    // Fallback to legacy measurements endpoint
+-    interface ApiMeasurement {
+-      id: string
+-      measuredAt: string
+-      weight: number | null
+-      bodyFat: number | null
+-      muscleMass: number | null
+-    }
+-    const rows = await apiRequest<ApiMeasurement[]>('/measurements')
+-    const measurements: Measurement[] = rows
+-      .filter((row) => row.weight !== null)
+-      .map((row) => ({
+-        id: row.id,
+-        date: row.measuredAt.slice(0, 10),
+-        weight: row.weight!,
+-        bodyFat: row.bodyFat ?? undefined,
+-        muscleMass: row.muscleMass ?? undefined,
+-        provenanceLabel: 'Внесено вручную',
+-      }))
+-    return { measurements, visitsThisMonth: 3, consistentWeeks: 3 }
++  return {
++    measurements,
++    visitsThisMonth: health.visitsThisMonth,
++    consistentWeeks: health.consistentWeeks,
++    latestWeightSummary: health.latestWeight,
++    latestBodyFatSummary: health.latestBodyFat,
++    latestMuscleMassSummary: health.latestMuscleMass,
+   }
+ }
+diff --git a/src/hooks/useCountUp.ts b/src/hooks/useCountUp.ts
+index 069725a..779eaa5 100644
+--- a/src/hooks/useCountUp.ts
++++ b/src/hooks/useCountUp.ts
+@@ -13,22 +13,31 @@ interface UseCountUpOptions {
+  * Uses cubic ease-out curve to mimic --motion-ease-emphasized.
+  * Automatically bypassed when prefers-reduced-motion is active.
+  */
++export function useCountUp(targetValue: number, options?: UseCountUpOptions): number
++export function useCountUp(targetValue: number | undefined, options?: UseCountUpOptions): number | undefined
+ export function useCountUp(
+-  targetValue: number,
++  targetValue: number | undefined,
+   options: UseCountUpOptions = {}
+-): number {
++): number | undefined {
+   const { duration = MOTION_DURATIONS.reveal, decimals = 0, startVal } = options
+   const prefersReduced = useReducedMotion()
+ 
+-  const [value, setValue] = useState<number>(() => {
++  const [value, setValue] = useState<number | undefined>(() => {
++    if (targetValue === undefined) return undefined
+     if (prefersReduced || duration <= 0) return targetValue
+     return startVal !== undefined ? startVal : targetValue
+   })
+ 
+-  const currentValRef = useRef<number>(value)
++  const currentValRef = useRef<number | undefined>(value)
+   const prevStartValRef = useRef<number | undefined>(startVal)
+ 
+   useEffect(() => {
++    if (targetValue === undefined) {
++      setValue(undefined)
++      currentValRef.current = undefined
++      return
++    }
++
+     // If reduced motion is requested or duration is 0, render target value immediately
+     if (prefersReduced || duration <= 0) {
+       setValue(targetValue)
+@@ -45,6 +54,16 @@ export function useCountUp(
+       }
+     }
+ 
++    // If previous value was undefined (first async value arrived) and no startVal, render immediately without count-up
++    if (currentValRef.current === undefined) {
++      const initial = startVal !== undefined ? startVal : targetValue
++      currentValRef.current = initial
++      setValue(initial)
++      if (initial === targetValue) {
++        return
++      }
++    }
++
+     const from = currentValRef.current
+     if (from === targetValue) {
+       setValue(targetValue)
+diff --git a/src/main.tsx b/src/main.tsx
+index de7a910..52017b2 100644
+--- a/src/main.tsx
++++ b/src/main.tsx
+@@ -3,9 +3,7 @@ import { Capacitor } from '@capacitor/core'
+ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+ import { StrictMode } from 'react'
+ import { createRoot } from 'react-dom/client'
+-import { BrowserRouter } from 'react-router-dom'
+ import App from './App'
+-import { BookingProvider } from './features/bookings/BookingContext'
+ import { popModal } from './services/modalStack'
+ import './styles/index.css'
+ 
+@@ -18,11 +16,7 @@ const queryClient = new QueryClient({
+ createRoot(document.getElementById('root')!).render(
+   <StrictMode>
+     <QueryClientProvider client={queryClient}>
+-      <BrowserRouter>
+-        <BookingProvider>
+-          <App />
+-        </BookingProvider>
+-      </BrowserRouter>
++      <App />
+     </QueryClientProvider>
+   </StrictMode>,
+ )
+diff --git a/src/styles/motion.css b/src/styles/motion.css
+index 6387403..66dacd6 100644
+--- a/src/styles/motion.css
++++ b/src/styles/motion.css
+@@ -62,12 +62,31 @@
+ /* Shared element transition: Trainer Avatar & Name */
+ ::view-transition-group(trainer-avatar-dima),
+ ::view-transition-group(trainer-avatar-vanya),
++::view-transition-group(trainer-avatar-sergey),
+ ::view-transition-group(trainer-name-dima),
+-::view-transition-group(trainer-name-vanya) {
++::view-transition-group(trainer-name-vanya),
++::view-transition-group(trainer-name-sergey) {
+   animation-duration: var(--motion-duration-page);
+   animation-timing-function: var(--motion-ease-emphasized);
+ }
+ 
++::view-transition-old(trainer-avatar-dima),
++::view-transition-new(trainer-avatar-dima),
++::view-transition-old(trainer-avatar-vanya),
++::view-transition-new(trainer-avatar-vanya),
++::view-transition-old(trainer-avatar-sergey),
++::view-transition-new(trainer-avatar-sergey),
++::view-transition-old(trainer-name-dima),
++::view-transition-new(trainer-name-dima),
++::view-transition-old(trainer-name-vanya),
++::view-transition-new(trainer-name-vanya),
++::view-transition-old(trainer-name-sergey),
++::view-transition-new(trainer-name-sergey) {
++  height: 100%;
++  width: 100%;
++}
++
++
+ /* --------------------------------------------------------------------------
+    F. Shared Micro Interaction Utilities
+    -------------------------------------------------------------------------- */
+@@ -131,8 +150,9 @@
+ 
+ .button--confirmed {
+   background: var(--brand-yellow) !important;
+-  color: #0A0D10 !important;
+-  font-weight: 750 !important;
++  color: #111111 !important;
++  font-weight: 800 !important;
++  opacity: 1 !important;
+   pointer-events: none;
+   transform: none !important;
+   transition: background-color var(--motion-duration-ui-fast) var(--motion-ease-standard),

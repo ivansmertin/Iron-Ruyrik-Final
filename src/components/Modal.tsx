@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
-import { registerModal } from '../services/modalStack'
+import { createPortal } from 'react-dom'
+import { popModal, registerModal } from '../services/modalStack'
 
 interface ModalProps {
   isOpen: boolean
@@ -16,6 +17,7 @@ export function Modal({
   className = '',
   children,
 }: ModalProps) {
+  const backdropRef = useRef<HTMLDivElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousActiveElementRef = useRef<HTMLElement | null>(null)
   const prevIsOpenRef = useRef(false)
@@ -44,6 +46,10 @@ export function Modal({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation()
+        e.stopImmediatePropagation()
+        if (popModal()) {
+          return
+        }
         onClose()
       }
     }
@@ -53,13 +59,50 @@ export function Modal({
     }
   }, [isOpen, onClose])
 
-  // 3. Scroll lock
+  // 3. Scroll lock & Background AT isolation
   useEffect(() => {
     if (!isOpen) return
     const originalOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+
+    // Background AT / keyboard isolation: isolate elements outside modal
+    const backdrop = backdropRef.current
+    const affectedElements: { el: HTMLElement; prevAriaHidden: string | null; prevInert: boolean }[] = []
+
+    if (backdrop && document.body) {
+      const siblings = Array.from(document.body.children).filter(
+        (child) => child !== backdrop && !child.contains(backdrop) && child.tagName !== 'SCRIPT'
+      )
+      siblings.forEach((child) => {
+        const el = child as HTMLElement
+        affectedElements.push({
+          el,
+          prevAriaHidden: el.getAttribute('aria-hidden'),
+          prevInert: (el as HTMLElement & { inert?: boolean }).inert ?? false,
+        })
+        el.setAttribute('aria-hidden', 'true')
+        try {
+          ;(el as HTMLElement & { inert?: boolean }).inert = true
+        } catch {
+          // ignore if not supported in environment
+        }
+      })
+    }
+
     return () => {
       document.body.style.overflow = originalOverflow
+      affectedElements.forEach(({ el, prevAriaHidden, prevInert }) => {
+        if (prevAriaHidden === null) {
+          el.removeAttribute('aria-hidden')
+        } else {
+          el.setAttribute('aria-hidden', prevAriaHidden)
+        }
+        try {
+          ;(el as HTMLElement & { inert?: boolean }).inert = prevInert
+        } catch {
+          // ignore
+        }
+      })
     }
   }, [isOpen])
 
@@ -128,8 +171,9 @@ export function Modal({
 
   if (!isOpen) return null
 
-  return (
+  const modalNode = (
     <div
+      ref={backdropRef}
       className="modal-backdrop"
       role="presentation"
       onClick={onClose}
@@ -147,4 +191,10 @@ export function Modal({
       </div>
     </div>
   )
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalNode, document.body)
+  }
+
+  return modalNode
 }

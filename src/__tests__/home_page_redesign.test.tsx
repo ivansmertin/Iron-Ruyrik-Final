@@ -146,8 +146,8 @@ describe('Home Page Cardless / Container-Light Milestone', () => {
 
       expect(screen.getByText(/8 сентября/i)).toBeDefined()
       expect(screen.getByText('17:30–18:30')).toBeDefined()
-      expect(screen.getByText('Силовая тренировка')).toBeDefined()
-      expect(screen.getByText('Ваня · 60 мин')).toBeDefined()
+      expect(screen.getByText('Тренировка в зале')).toBeDefined()
+      expect(screen.getByText('60 мин · Тренер или самостоятельно')).toBeDefined()
       expect(screen.getByText('8 мест на тренировку')).toBeDefined()
 
       const cta = screen.getByRole('link', { name: 'Записаться' })

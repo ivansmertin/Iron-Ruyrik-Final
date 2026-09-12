@@ -1,6 +1,6 @@
 # Motion QA — «Железный Рюрик»
 
-Дата финального прохода: 2026-09-07.
+Дата финального прохода: 2026-09-12.
 
 ## Implemented motion system
 
@@ -37,6 +37,7 @@ Motion построен на токенах из `src/styles/motion.css` и си
 | chart period surface/labels | выбор периода | 220/180 ms | emphasized/standard | подтверждает период; данные графика обновляются сразу и не блокируют следующий tap |
 | `.line-chart__guide` | выбор точки графика | 120 ms | enter | связывает выбранное измерение с осью; tooltip сразу следует за tap |
 | `.line-chart__dot` | focus/selection точки | 120 ms | standard | показывает активную точку без morph всей геометрии |
+| `.chart-data-disclosure__btn` | клик по кнопке раскрытия таблицы замеров | 90 ms | direct | мгновенный тактильный отклик; блок таблицы `<div className="chart-data-disclosure">` появляется сразу без разворачивающей height-анимации |
 | `.source-item__sync-bar` | Health sync pending | 900 ms loop | linear | показывает, какой конкретно источник синхронизируется |
 | `.spin-icon`, `.spin-animation` | save/connect/sync pending | 900 ms loop | linear | сообщает о незавершённой async-операции |
 | `.time-digit-flip` | реальное изменение ближайшего времени из fresh data | 180 ms | enter | делает замену времени заметной без layout-shift |

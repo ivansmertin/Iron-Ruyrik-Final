@@ -1,0 +1,20 @@
+
+> zhelezny-ryurik-app@0.1.0 lint
+> eslint .
+
+
+Oops! Something went wrong! :(
+
+ESLint: 9.39.5
+
+Error: EPERM: operation not permitted, scandir 'C:\Users\iwans\Desktop\myvibecode\Zhelezny_ryrik\.pytest_cache'
+    at async Object.readdir (node:internal/fs/promises:956:18)
+    at async NodeHfsImpl.list (file:///C:/Users/iwans/Desktop/myvibecode/Zhelezny_ryrik/node_modules/@humanfs/node/src/node-hfs.js:304:19)
+    at async NodeHfs.<anonymous> (file:///C:/Users/iwans/Desktop/myvibecode/Zhelezny_ryrik/node_modules/@humanfs/core/src/hfs.js:560:21)
+    at async NodeHfs.<anonymous> (file:///C:/Users/iwans/Desktop/myvibecode/Zhelezny_ryrik/node_modules/@humanfs/core/src/hfs.js:604:6)
+    at async NodeHfs.walk (file:///C:/Users/iwans/Desktop/myvibecode/Zhelezny_ryrik/node_modules/@humanfs/core/src/hfs.js:614:3)
+    at async globSearch (C:\Users\iwans\Desktop\myvibecode\Zhelezny_ryrik\node_modules\eslint\lib\eslint\eslint-helpers.js:364:20)
+    at async Promise.allSettled (index 0)
+    at async globMultiSearch (C:\Users\iwans\Desktop\myvibecode\Zhelezny_ryrik\node_modules\eslint\lib\eslint\eslint-helpers.js:455:18)
+    at async Promise.all (index 0)
+    at async findFiles (C:\Users\iwans\Desktop\myvibecode\Zhelezny_ryrik\node_modules\eslint\lib\eslint\eslint-helpers.js:635:25)

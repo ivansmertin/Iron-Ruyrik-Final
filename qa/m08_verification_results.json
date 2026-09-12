@@ -1,0 +1,210 @@
+[
+  {
+    "viewport": "320x740",
+    "data": {
+      "heroVal": "78,2",
+      "heroUnit": "кг",
+      "deltaText": "−1,2 кг с 1 июня",
+      "provenance": "Apple Health (iPhone 15)",
+      "readoutVal": "78,2 кг",
+      "readoutDate": "8 сентября 2026 г., 08:30",
+      "svgAriaHidden": "true",
+      "interactiveInSvg": 0,
+      "hasHorizontalScroll": false,
+      "sourcesBtnSize": {
+        "width": 100,
+        "height": 44
+      },
+      "addBtnSize": {
+        "width": 74,
+        "height": 44
+      },
+      "prevBtnSize": {
+        "width": 44,
+        "height": 44
+      },
+      "nextBtnSize": {
+        "width": 44,
+        "height": 44
+      },
+      "disclosureBtnSize": {
+        "width": 288,
+        "height": 44
+      },
+      "periodBtnsSizes": [
+        {
+          "width": 69,
+          "height": 44
+        },
+        {
+          "width": 69,
+          "height": 44
+        },
+        {
+          "width": 69,
+          "height": 44
+        },
+        {
+          "width": 69,
+          "height": 44
+        }
+      ]
+    }
+  },
+  {
+    "viewport": "360x800",
+    "data": {
+      "heroVal": "78,2",
+      "heroUnit": "кг",
+      "deltaText": "−1,2 кг с 1 июня",
+      "provenance": "Apple Health (iPhone 15)",
+      "readoutVal": "78,2 кг",
+      "readoutDate": "8 сентября 2026 г., 08:30",
+      "svgAriaHidden": "true",
+      "interactiveInSvg": 0,
+      "hasHorizontalScroll": false,
+      "sourcesBtnSize": {
+        "width": 102,
+        "height": 44
+      },
+      "addBtnSize": {
+        "width": 76,
+        "height": 44
+      },
+      "prevBtnSize": {
+        "width": 44,
+        "height": 44
+      },
+      "nextBtnSize": {
+        "width": 44,
+        "height": 44
+      },
+      "disclosureBtnSize": {
+        "width": 328,
+        "height": 44
+      },
+      "periodBtnsSizes": [
+        {
+          "width": 79,
+          "height": 44
+        },
+        {
+          "width": 79,
+          "height": 44
+        },
+        {
+          "width": 79,
+          "height": 44
+        },
+        {
+          "width": 79,
+          "height": 44
+        }
+      ]
+    }
+  },
+  {
+    "viewport": "390x844",
+    "data": {
+      "heroVal": "78,2",
+      "heroUnit": "кг",
+      "deltaText": "−1,2 кг с 1 июня",
+      "provenance": "Apple Health (iPhone 15)",
+      "readoutVal": "78,2 кг",
+      "readoutDate": "8 сентября 2026 г., 08:30",
+      "svgAriaHidden": "true",
+      "interactiveInSvg": 0,
+      "hasHorizontalScroll": false,
+      "sourcesBtnSize": {
+        "width": 115,
+        "height": 44
+      },
+      "addBtnSize": {
+        "width": 87,
+        "height": 44
+      },
+      "prevBtnSize": {
+        "width": 44,
+        "height": 44
+      },
+      "nextBtnSize": {
+        "width": 44,
+        "height": 44
+      },
+      "disclosureBtnSize": {
+        "width": 358,
+        "height": 44
+      },
+      "periodBtnsSizes": [
+        {
+          "width": 87,
+          "height": 44
+        },
+        {
+          "width": 87,
+          "height": 44
+        },
+        {
+          "width": 87,
+          "height": 44
+        },
+        {
+          "width": 87,
+          "height": 44
+        }
+      ]
+    }
+  },
+  {
+    "viewport": "430x932",
+    "data": {
+      "heroVal": "78,2",
+      "heroUnit": "кг",
+      "deltaText": "−1,2 кг с 1 июня",
+      "provenance": "Apple Health (iPhone 15)",
+      "readoutVal": "78,2 кг",
+      "readoutDate": "8 сентября 2026 г., 08:30",
+      "svgAriaHidden": "true",
+      "interactiveInSvg": 0,
+      "hasHorizontalScroll": false,
+      "sourcesBtnSize": {
+        "width": 115,
+        "height": 44
+      },
+      "addBtnSize": {
+        "width": 87,
+        "height": 44
+      },
+      "prevBtnSize": {
+        "width": 44,
+        "height": 44
+      },
+      "nextBtnSize": {
+        "width": 44,
+        "height": 44
+      },
+      "disclosureBtnSize": {
+        "width": 398,
+        "height": 44
+      },
+      "periodBtnsSizes": [
+        {
+          "width": 97,
+          "height": 44
+        },
+        {
+          "width": 97,
+          "height": 44
+        },
+        {
+          "width": 97,
+          "height": 44
+        },
+        {
+          "width": 97,
+          "height": 44
+        }
+      ]
+    }
+  }
+]

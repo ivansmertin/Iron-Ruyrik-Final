@@ -1,0 +1,13 @@
+main roundtrip and native browser Back DONE
+before-resolve DONE
+100ms DONE
+last-place DONE
+trainers main and unsupported catalog path ERROR locator.click: Timeout 5000ms exceeded.
+Call log:
+[2m  - waiting for getByRole('button', { name: /12/ })[22m
+
+error /schedule DONE
+error /booking/s0 DONE
+error /booking/s0?trainer=dima DONE
+error /trainers DONE
+error /trainers/dima DONE

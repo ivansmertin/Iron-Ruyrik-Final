@@ -57,12 +57,29 @@
                                        │
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                 UI «Мой прогресс» (ProgressPage & Modal)                    │
-│  - Карточки текущих показателей с бейджами источников (Xiaomi, Apple, Ручной│
-│  - График динамики со спарклайнами и тултипами provenance                   │
-│  - Модальное окно «Источники данных» с ручной синхронизацией и настройками   │
+│             UI «Мой прогресс» и «Источники данных» (Unified State)           │
+│  - Единый контроллер состояния useHealthSources (бэкенд /health/sources)     │
+│  - Экран /integrations и модалка HealthSourcesModal — две проекции модели   │
+│  - Строгая LIFO-обработка Escape и аппаратного Back через modalStack         │
+│  - Честная диагностика доступности: Native App vs Web Sandbox               │
+│  - Карточки текущих показателей с provenance (Xiaomi, Apple Health, Ручной) │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### 1.1. Единый контроллер источников здоровья (`useHealthSources`)
+- **Единый источник правды**: Экран `/integrations` (`IntegrationsPage.tsx`) и модальное окно `HealthSourcesModal.tsx` работают поверх единого хука `useHealthSources`.
+- **Устранение моков**: Полностью удалены локальные массивы с сериализацией React-компонентов иконок в `localStorage` (`ryrik_integrations`), фиктивные задержки `setTimeout(1200)` и статические даты вида `'Сегодня, 08:30'`.
+- **Санитизация хранилища**: Функция `cleanupLegacyIntegrationsStorage` автоматически очищает устаревший ключ `ryrik_integrations` при инициализации.
+- **Честное поведение Web vs Native**:
+  - В браузере (веб-окружение без Capacitor) системные API HealthKit и Health Connect недоступны аппаратно.
+  - При попытке подключения или синхронизации интерфейс честно объясняет пользователю необходимость мобильного приложения iOS/Android и рекомендует ручной ввод замеров.
+  - Исключена симуляция успешного подключения или синхронизации в вебе.
+- **LIFO-иерархия закрытия (Escape и Android Back)**:
+  - Вложенные состояния подтверждения (`activeProviderForPermission`, `disconnectConfirmProvider`) регистрируются в глобальном стеке `modalStack`.
+  - При нажатии `Escape` или аппаратной кнопки Back на Android первым шагом закрывается именно вложенный диалог, а модальное окно остаётся открытым.
+  - Вторым нажатием закрывается основное модальное окно. Устранены конкурирующие слушатели на объекте `window`.
+- **Терминология состава тела**:
+  - Показатель `LeanBodyMassRecord` и `leanBodyMass` во всех пользовательских интерфейсах обозначается как **«Безжировая масса»** (канонический медицинский термин), сохраняя типизацию `lean_body_mass` на бэкенде.
 
 ---
 
@@ -142,7 +159,7 @@
 |---|---|---|---|---|---|---|
 | **Xiaomi Smart Scale 2** | Mi Fitness (Xiaomi Wear) / Zepp Life | Apple Health (HealthKit) | Android Health Connect | `com.xiaomi.wearable`<br>`com.xiaomi.hm.health` | Вес (`weight`) | Только вес; биоимпеданс отсутствует в базовой модели |
 | **Mi Body Composition Scale 2** | Mi Fitness / Zepp Life | Apple Health (HealthKit) | Android Health Connect | `com.xiaomi.wearable`<br>`com.xiaomi.hm.health` | Вес (`weight`),<br>Жир (`body_fat_percentage`),<br>Безжировая масса (`lean_body_mass`) | Синхронизируется при взвешивании босиком; требуется включение синхронизации в настройках Mi Fitness |
-| **Xiaomi Scale S400** | Mi Fitness | Apple Health (HealthKit) | Android Health Connect | `com.xiaomi.wearable` | Вес (`weight`),<br>Жир (`body_fat_percentage`),<br>Мышечная масса (`lean_body_mass`) | Двухчастотный биоимпеданс S400 передает в агрегатор стандартные показатели состава тела; расширенные клинические индексы остаются внутри Mi Fitness |
+| **Xiaomi Scale S400** | Mi Fitness | Apple Health (HealthKit) | Android Health Connect | `com.xiaomi.wearable` | Вес (`weight`),<br>Жир (`body_fat_percentage`),<br>Безжировая масса (`lean_body_mass`) | Двухчастотный биоимпеданс S400 передает в агрегатор стандартные показатели состава тела; расширенные клинические индексы остаются внутри Mi Fitness |
 | **Amazfit / Zepp Scales** | Zepp (бывший Amazfit) | Apple Health (HealthKit) | Android Health Connect | `com.huami.midong`<br>`com.huami.watch.hmwatchmanager` | Вес (`weight`),<br>Жир (`body_fat_percentage`),<br>Безжировая масса (`lean_body_mass`) | Пакет Huami сопоставляется с провайдером Xiaomi/Zepp в правилах маппинга |
 
 ### Маппинг пакетов (`source_mapping.py`):

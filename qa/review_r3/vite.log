@@ -1,0 +1,13 @@
+
+  VITE v7.3.6  ready in 1354 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+15:05:43 [vite] (client) hmr update /src/pages/BookingPage.tsx
+15:05:51 [vite] (client) hmr update /src/pages/BookingPage.tsx
+15:05:56 [vite] (client) hmr update /src/pages/BookingPage.tsx
+15:06:04 [vite] (client) hmr update /src/pages/SchedulePage.tsx
+15:06:10 [vite] (client) hmr update /src/pages/SchedulePage.tsx
+15:06:20 [vite] (client) hmr update /src/styles/index.css
+15:06:26 [vite] (client) hmr update /src/styles/index.css
+15:06:35 [vite] (client) hmr update /src/styles/index.css
+15:06:44 [vite] (client) hmr update /src/components/ProgressLineChart.tsx

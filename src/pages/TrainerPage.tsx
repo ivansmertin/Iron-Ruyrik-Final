@@ -1,96 +1,286 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, CalendarClock, Check } from 'lucide-react'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { ArrowLeft, RefreshCw } from 'lucide-react'
+import { Link, useParams } from 'react-router-dom'
 import { TrainerAvatar } from '../components/TrainerCard'
-import { ButtonLink, Card, LoadingPage, SectionHeader } from '../components/ui'
+import { Button, ButtonLink, Skeleton } from '../components/ui'
 import { getScheduleData } from '../api/schedule'
 import { getTrainers } from '../api/trainers'
+import { isSupportedBookingTrainer } from '../types/domain'
+import { cleanSpecialty } from '../utils/formatters'
 
 export function TrainerPage() {
-  const { id } = useParams()
-  const trainersQuery = useQuery({ queryKey: ['trainers'], queryFn: getTrainers })
-  const scheduleQuery = useQuery({ queryKey: ['schedule'], queryFn: getScheduleData })
-  if (trainersQuery.isLoading || scheduleQuery.isLoading) return <LoadingPage label="Загружаем профиль тренера" />
+  const { id } = useParams<{ id: string }>()
+
+  const trainersQuery = useQuery({
+    queryKey: ['trainers'],
+    queryFn: getTrainers,
+  })
+
+  const scheduleQuery = useQuery({
+    queryKey: ['schedule'],
+    queryFn: getScheduleData,
+  })
+
+  // 1. Loading State
+  if (trainersQuery.isLoading) {
+    return (
+      <div
+        className="page trainer-detail-page trainer-detail-page--loading"
+        aria-busy="true"
+        aria-label="Загрузка профиля тренера"
+      >
+        <div className="back-link back-link--skeleton">
+          <Skeleton style={{ width: '120px', height: '24px' }} />
+        </div>
+        <div className="trainer-hero trainer-hero--skeleton">
+          <Skeleton className="trainer-hero__avatar-skeleton" />
+          <div className="trainer-hero__info">
+            <Skeleton style={{ width: '60px', height: '12px', marginBottom: '8px' }} />
+            <Skeleton style={{ width: '220px', height: '36px' }} />
+          </div>
+        </div>
+        <Skeleton style={{ width: '100%', height: '48px', marginTop: '16px' }} />
+        <div style={{ marginTop: '28px' }}>
+          <Skeleton style={{ width: '140px', height: '20px', marginBottom: '14px' }} />
+          <Skeleton style={{ width: '100%', height: '60px' }} />
+        </div>
+      </div>
+    )
+  }
+
+  // 2. Error State (Network error loading trainers)
+  if (trainersQuery.isError) {
+    return (
+      <div className="page trainer-detail-page">
+        <Link to="/trainers" viewTransition className="back-link">
+          <ArrowLeft size={19} aria-hidden="true" />
+          <span>Все тренеры</span>
+        </Link>
+        <div className="trainer-profile-state trainer-profile-state--error" role="alert">
+          <p className="trainer-profile-state__message">
+            Не удалось загрузить профиль тренера. Проверьте соединение и повторите попытку.
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => trainersQuery.refetch()}
+            disabled={trainersQuery.isFetching}
+            className="trainer-profile-state__btn"
+          >
+            <RefreshCw
+              size={16}
+              className={trainersQuery.isFetching ? 'animate-spin' : ''}
+              aria-hidden="true"
+            />
+            <span>{trainersQuery.isFetching ? 'Загрузка…' : 'Повторить попытку'}</span>
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   const trainer = trainersQuery.data?.find((item) => item.id === id)
-  if (!trainer || !['dima', 'vanya'].includes(id ?? '')) return <Navigate to="/404" replace />
-  const available = scheduleQuery.data?.slots.find((slot) => slot.occupied < slot.capacity && !slot.isBlocked)
+
+  // 3. Not Found State (Trainer genuinely unknown in roster)
+  if (!trainer) {
+    return (
+      <div className="page trainer-detail-page">
+        <Link to="/trainers" viewTransition className="back-link">
+          <ArrowLeft size={19} aria-hidden="true" />
+          <span>Все тренеры</span>
+        </Link>
+        <div className="trainer-profile-state trainer-profile-state--not-found" role="status">
+          <p className="trainer-profile-state__message">
+            Тренер не найден. Возможно, профиль был перемещен или удален.
+          </p>
+          <ButtonLink to="/trainers" variant="secondary" className="trainer-profile-state__btn">
+            Вернуться к списку тренеров
+          </ButtonLink>
+        </div>
+      </div>
+    )
+  }
+
+  const isBookingSupported = isSupportedBookingTrainer(trainer.id)
+  const specialties = trainer.specialties.map(cleanSpecialty).filter(Boolean)
+
+  // Future unblocked slots calculation
+  const now = new Date()
+  const futureSlots =
+    scheduleQuery.data?.slots.filter((slot) => {
+      const isFuture = new Date(slot.endIso).getTime() > now.getTime()
+      return isFuture && !slot.isBlocked
+    }) ?? []
+  const nextAvailableSlot = futureSlots.find((slot) => slot.occupied < slot.capacity)
 
   return (
     <div className="page trainer-detail-page">
-      <Link to="/trainers" viewTransition className="back-link">
-        <ArrowLeft size={19} /> Все тренеры
+      {/* Back Link */}
+      <Link to="/trainers" viewTransition className="back-link" aria-label="Вернуться ко всем тренерам">
+        <ArrowLeft size={19} aria-hidden="true" />
+        <span>Все тренеры</span>
       </Link>
-      <section className="trainer-hero">
+
+      {/* Hero Identity Section */}
+      <section className="trainer-hero" aria-label={`Профиль: ${trainer.name}`}>
         <TrainerAvatar
           trainer={trainer}
+          className="trainer-hero__avatar"
           style={{ viewTransitionName: `trainer-avatar-${trainer.id}` }}
         />
-        <div>
-          <p className="eyebrow">Тренер</p>
-          <h1 style={{ viewTransitionName: `trainer-name-${trainer.id}` }}>
+        <div className="trainer-hero__info">
+          <span className="eyebrow trainer-hero__eyebrow">ТРЕНЕР</span>
+          <h1
+            className="trainer-hero__name"
+            style={{ viewTransitionName: `trainer-name-${trainer.id}` }}
+          >
             {trainer.name}
           </h1>
-          <ul className="tag-list">
-            {trainer.specialties.slice(0, 3).map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
         </div>
       </section>
-      <ButtonLink
-        to={`/schedule?trainer=${trainer.id}`}
-        viewTransition
-      >
-        Записаться к {trainer.name}
-      </ButtonLink>
-      <Card className="trainer-about">
-        <SectionHeader title="О тренере" />
-        <p>{trainer.about}</p>
-        <h3>Направления</h3>
-        <ul className="direction-list">
-          {trainer.specialties.map((item) => <li key={item}><Check size={18} /> {item}</li>)}
-        </ul>
-      </Card>
 
+      {/* Primary Action */}
+      {isBookingSupported ? (
+        <ButtonLink
+          to={`/schedule?trainer=${trainer.id}`}
+          viewTransition
+          variant="primary"
+          className="trainer-profile-cta"
+          aria-label={`Выбрать время тренировки с ${trainer.name}`}
+        >
+          Выбрать время
+        </ButtonLink>
+      ) : (
+        <div className="trainer-profile-unsupported-note" role="note">
+          <p className="trainer-profile-unsupported-note__text">
+            Запись к этому тренеру через приложение временно недоступна.
+          </p>
+        </div>
+      )}
+
+      {/* Directions Section (Single substantive specialties list, no duplicate chips) */}
+      {specialties.length > 0 && (
+        <section className="trainer-profile-section trainer-directions" aria-label="Направления">
+          <h2 className="trainer-profile-section__title">Направления</h2>
+          <ul className="trainer-directions__list" aria-label={`Направления: ${trainer.name}`}>
+            {specialties.map((spec) => (
+              <li key={spec} className="trainer-directions__item">
+                <span className="trainer-directions__bullet" aria-hidden="true">·</span>
+                <span>{spec}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* About Section */}
+      {trainer.about && (
+        <section className="trainer-profile-section trainer-about" aria-label="О тренере">
+          <h2 className="trainer-profile-section__title">О тренере</h2>
+          <p className="trainer-about__text">{trainer.about}</p>
+        </section>
+      )}
+
+      {/* Telegram Channel Section (Editorial block for Dima, no blue icon box) */}
       {trainer.id === 'dima' && (
-        <Card className="trainer-channel-card">
-          <div className="trainer-channel-card__head">
-            <div className="trainer-channel-card__icon" aria-hidden="true">
-              <svg width={20} height={20} viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.77-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .37z" />
-              </svg>
-            </div>
-            <div>
-              <span className="eyebrow" style={{ color: 'var(--brand-yellow)', marginBottom: 0 }}>Telegram-канал</span>
-              <strong style={{ display: 'block', fontSize: '1rem', color: 'var(--text-primary)' }}>Говер на движениях</strong>
-            </div>
+        <section className="trainer-profile-section trainer-channel" aria-label="Telegram-канал">
+          <div className="trainer-channel__header">
+            <span className="eyebrow trainer-channel__eyebrow">TELEGRAM-КАНАЛ</span>
+            <h3 className="trainer-channel__title">Говер на движениях</h3>
           </div>
-          <p style={{ margin: '8px 0 12px', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+          <p className="trainer-channel__desc">
             Авторский блог о спорте, триатлоне, забегах и подготовке атлетов в Великом Новгороде.
           </p>
           <a
             href="https://t.me/goverrun"
             target="_blank"
             rel="noopener noreferrer"
-            className="button button--secondary"
-            style={{ width: '100%', minHeight: '40px', gap: '8px' }}
+            className="button button--secondary trainer-channel__btn"
+            aria-label="Перейти в Telegram-канал Говер на движениях"
           >
-            <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.77-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .37z" />
-            </svg>
             <span>Перейти в @goverrun</span>
           </a>
-        </Card>
+        </section>
       )}
 
-      {available && (
+      {/* Next Slot Section (Compact actionable row with honest caption) */}
+      <section className="trainer-profile-section trainer-next-slot-section" aria-label="Ближайшее время в зале">
+        {scheduleQuery.isLoading && (
+          <div
+            className="trainer-next-slot-row trainer-next-slot-row--loading"
+            aria-busy="true"
+            aria-label="Загрузка расписания"
+          >
+            <Skeleton style={{ width: '100%', height: '52px' }} />
+          </div>
+        )}
 
-        <Card className="next-slot-card">
-          <CalendarClock size={24} />
-          <div><span>Ближайшее свободное время</span><strong>{available.dateLabel}, {available.startAt}–{available.endAt}</strong></div>
-          <ButtonLink to={`/booking/${available.id}?trainer=${trainer.id}`} variant="secondary">Выбрать</ButtonLink>
-        </Card>
-      )}
+        {!scheduleQuery.isLoading && scheduleQuery.isError && (
+          <div className="trainer-next-slot-row trainer-next-slot-row--error">
+            <div className="trainer-next-slot-row__info">
+              <span className="trainer-next-slot-row__label">БЛИЖАЙШЕЕ ВРЕМЯ В ЗАЛЕ</span>
+              <p className="trainer-next-slot-row__desc">Не удалось загрузить ближайшие слоты</p>
+            </div>
+            <ButtonLink
+              to="/schedule"
+              variant="secondary"
+              className="trainer-next-slot-row__btn"
+              aria-label="Открыть расписание"
+            >
+              Расписание
+            </ButtonLink>
+          </div>
+        )}
+
+        {!scheduleQuery.isLoading && !scheduleQuery.isError && nextAvailableSlot && (
+          <div className="trainer-next-slot-row">
+            <div className="trainer-next-slot-row__info">
+              <span className="trainer-next-slot-row__label">БЛИЖАЙШЕЕ ВРЕМЯ В ЗАЛЕ</span>
+              <strong className="trainer-next-slot-row__time">
+                {nextAvailableSlot.dateLabel}, {nextAvailableSlot.startAt}–{nextAvailableSlot.endAt}
+              </strong>
+            </div>
+            {isBookingSupported ? (
+              <ButtonLink
+                to={`/booking/${nextAvailableSlot.id}?trainer=${trainer.id}`}
+                viewTransition
+                variant="secondary"
+                className="trainer-next-slot-row__btn"
+                aria-label={`Выбрать слот ${nextAvailableSlot.startAt} ${nextAvailableSlot.dateLabel}`}
+              >
+                Выбрать
+              </ButtonLink>
+            ) : (
+              <ButtonLink
+                to="/schedule"
+                viewTransition
+                variant="secondary"
+                className="trainer-next-slot-row__btn"
+                aria-label="Открыть общее расписание"
+              >
+                Расписание
+              </ButtonLink>
+            )}
+          </div>
+        )}
+
+        {!scheduleQuery.isLoading && !scheduleQuery.isError && !nextAvailableSlot && (
+          <div className="trainer-next-slot-row trainer-next-slot-row--empty">
+            <div className="trainer-next-slot-row__info">
+              <span className="trainer-next-slot-row__label">БЛИЖАЙШЕЕ ВРЕМЯ В ЗАЛЕ</span>
+              <p className="trainer-next-slot-row__desc">На ближайшие дни свободных мест нет</p>
+            </div>
+            <ButtonLink
+              to="/schedule"
+              variant="secondary"
+              className="trainer-next-slot-row__btn"
+              aria-label="Смотреть всё расписание"
+            >
+              Все слоты
+            </ButtonLink>
+          </div>
+        )}
+      </section>
     </div>
   )
 }

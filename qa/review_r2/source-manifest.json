@@ -1,0 +1,54 @@
+[
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\pages\\BookingPage.tsx",
+    "Hash": "68F7B05CD3166199513A8B3CB96A76ACF70DA580C5C82319A9C9346E43ED128E"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\pages\\SchedulePage.tsx",
+    "Hash": "743D5BDFF303755E529694B2D201ACC6248D5720E4950A02D7C8E90F14E05A8D"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\DateStrip.tsx",
+    "Hash": "8969F858CCE43F771BAEF19A511DC6979BB422BA27B5DDF6B298D1C9A8B38035"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\TrainerCard.tsx",
+    "Hash": "B622639D3973655817B76445C8A2DDEED3545CF7C83423B71EA49D707318F361"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\pages\\TrainersPage.tsx",
+    "Hash": "DFFB526EF9E5F384BE3E60FED51CCD136AB835B6BBD8B037A2EFD87AB05FC9CA"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\pages\\TrainerPage.tsx",
+    "Hash": "14A16BC1A84D81182A51E1CD0DA122F85433F86ECF248BBA102B9450844D9E21"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\styles\\index.css",
+    "Hash": "A89E15BF84329409E31B69D4439498F0E5BBCD0A0C54BEE70F7AE17A87319657"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\styles\\motion.css",
+    "Hash": "37546F15A937193A7C0E90746ED046E99F22FB4B51A4780DA45301FC9B3B157A"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\types\\domain.ts",
+    "Hash": "11FE90947BB3EC6B9BD31355F788B1C3494142B3BE6D06FB875CDD43130B9D6D"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\utils\\formatters.ts",
+    "Hash": "A1AA1D921B43136DD8E0B172BB7BBA0CF1FD9CEB4EDBF055BF125282E14B62D5"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\components\\Modal.tsx",
+    "Hash": "5F59D17D8016CFF1D01F5548103C67F997153C5132BB8851FAD80F3080C1577A"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\src\\main.tsx",
+    "Hash": "68853ADA9C22B5CBC11FC0FD0D31EE13971F64FB39F383FA53D9BE434032E381"
+  },
+  {
+    "Path": "C:\\Users\\iwans\\Desktop\\myvibecode\\Zhelezny_ryrik\\MIGRATION_LOG.md",
+    "Hash": "5BB59A6EAEDF931FD31666126CDF9B7671B8C00F9CCC6DD447A0AD2EBA702395"
+  }
+]

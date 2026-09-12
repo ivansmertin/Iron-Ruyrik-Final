@@ -91,7 +91,8 @@ export function HomePage() {
   const { user, activeBooking, capacity } = homeQuery.data
   const now = new Date()
   const slots = scheduleQuery.data?.slots ?? []
-  const nextSlot = slots.find((slot) => new Date(slot.endIso) > now && !slot.isBlocked) ?? slots[0] ?? null
+  const futureSlots = slots.filter((slot) => new Date(slot.endIso) > now && !slot.isBlocked)
+  const nextSlot = futureSlots.find((slot) => slot.occupied < slot.capacity) ?? futureSlots[0] ?? null
 
   return (
     <div className="page home-page">
@@ -116,7 +117,12 @@ export function HomePage() {
 
       {/* 2. Hero Workout (Cardless / Surface-based) */}
       <section className="home-section" aria-label="Ближайшая тренировка">
-        <BookingCard booking={activeBooking} nextSlot={nextSlot} />
+        <BookingCard
+          booking={activeBooking}
+          nextSlot={nextSlot}
+          isScheduleError={Boolean(scheduleQuery.isError && !activeBooking)}
+          onRetrySchedule={() => void scheduleQuery.refetch()}
+        />
       </section>
 
       <Divider />
@@ -153,7 +159,7 @@ export function HomePage() {
         <div className="club-modal__details">
           <p><strong>Адрес:</strong> Великий Новгород, ул. Большая Санкт-Петербургская, 28</p>
           <p><strong>Режим работы:</strong> 07:00 – 22:00, ежедневно</p>
-          <p><strong>Правило посещения:</strong> только по предварительной записи. Одновременно в зале тренируются не более 8 человек.</p>
+          <p><strong>Правило посещения:</strong> только по предварительной записи. Одновременно в зале тренируются не более {capacity.limit} человек.</p>
         </div>
         <Button
           onClick={() => setShowClubModal(false)}

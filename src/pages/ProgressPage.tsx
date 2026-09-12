@@ -2,20 +2,19 @@ import { useQuery } from '@tanstack/react-query'
 import {
   Activity,
   AlertCircle,
-  CalendarCheck2,
   Plus,
   Smartphone,
   TrendingDown,
   TrendingUp,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { getProgressData } from '../api/progress'
 import { AddMeasurementModal } from '../components/AddMeasurementModal'
 import { HealthSourcesModal } from '../components/HealthSourcesModal'
 import { ProgressLineChart } from '../components/ProgressLineChart'
 import { Divider, HeroMetric, PageHeader, Section, SectionHeader, Skeleton } from '../components/ui'
 import { useCountUp } from '../hooks/useCountUp'
-import { calculateDelta, formatDecimal, pluralize } from '../utils/formatters'
+import { calculateDelta, formatDecimal, formatDateRu } from '../utils/formatters'
 import { MOTION_DURATIONS } from '../utils/motion'
 
 export function ProgressPage() {
@@ -30,43 +29,17 @@ export function ProgressPage() {
   const currentWeight =
     data?.latestWeightSummary?.currentValue ?? data?.measurements?.at(-1)?.weight
 
-  // Retrieve previous known weight from sessionStorage to avoid counting up from 0
-  const [initialWeightVal] = useState<number | undefined>(() => {
-    try {
-      const stored = sessionStorage.getItem('ryrik_last_weight')
-      return stored ? parseFloat(stored) : undefined
-    } catch {
-      return undefined
-    }
-  })
-
-  // Smooth numeric transition ONLY when meaningful value changes
-  // If no previous value (initial session), renders currentWeight directly
-  const animatedWeight = useCountUp(currentWeight ?? 0, {
+  // First known value renders immediately without 0 -> value animation.
+  // Subsequent known -> known updates animate smoothly over <= 220ms.
+  const animatedWeight = useCountUp(currentWeight, {
     duration: MOTION_DURATIONS.ui,
     decimals: 1,
-    startVal: initialWeightVal,
   })
-
-  // Persist latest known weight to sessionStorage
-  useEffect(() => {
-    if (currentWeight !== undefined) {
-      try {
-        sessionStorage.setItem('ryrik_last_weight', String(currentWeight))
-      } catch {
-        // ignore storage errors
-      }
-    }
-  }, [currentWeight])
 
   if (isLoading) {
     return (
       <div className="page progress-page" aria-busy="true" aria-label="Загрузка данных прогресса">
         <PageHeader eyebrow="Динамика" title="Мой прогресс" />
-        <div className="progress-summary" aria-hidden="true">
-          <Skeleton className="summary-stat-skeleton" />
-          <Skeleton className="summary-stat-skeleton" />
-        </div>
         <Skeleton className="weight-card-skeleton" aria-hidden="true" />
         <div className="metric-list" aria-hidden="true">
           <Skeleton className="metric-row-skeleton" />
@@ -92,7 +65,7 @@ export function ProgressPage() {
     )
   }
 
-  const measurements = data.measurements
+  const measurements = data.measurements ?? []
   const latest = measurements.at(-1)
   const baseline = measurements[0]
 
@@ -102,45 +75,104 @@ export function ProgressPage() {
 
   const weightProvenance = weightSummary?.provenanceLabel ?? latest?.provenanceLabel
 
-  // Weight Delta
-  const weightDelta = weightSummary?.delta
-    ? {
+  // Weight Delta: only calculated when more than 1 measurement exists
+  let weightDelta: { formatted: string; direction: 'up' | 'down' | 'neutral'; label: string } | null = null
+  if (measurements.length > 1) {
+    if (weightSummary?.delta) {
+      const baselineFormatted = weightSummary.baselineDate
+        ? formatDateRu(weightSummary.baselineDate, 'long')
+        : baseline
+        ? formatDateRu(baseline.date, 'long')
+        : ''
+      const hasWithDate = weightSummary.delta.label.includes(' с ')
+      const label = hasWithDate
+        ? weightSummary.delta.label
+        : baselineFormatted
+        ? `${weightSummary.delta.formatted} с ${baselineFormatted}`
+        : weightSummary.delta.label
+
+      weightDelta = {
         formatted: weightSummary.delta.formatted,
         direction: weightSummary.delta.direction,
-        label: weightSummary.delta.label,
+        label,
       }
-    : measurements.length > 1 && baseline && latest
-    ? calculateDelta(latest.weight, baseline.weight, 'кг', baseline.date)
-    : null
+    } else if (baseline && latest) {
+      weightDelta = calculateDelta(
+        latest.weight,
+        baseline.weight,
+        'кг',
+        baseline.measuredAt || baseline.date
+      )
+    }
+  }
 
   // Body Fat Delta
   const currentBodyFat = fatSummary?.currentValue ?? latest?.bodyFat
   const fatProvenance = fatSummary?.provenanceLabel
-  const bodyFatDelta = fatSummary?.delta
-    ? {
+  let bodyFatDelta: { formatted: string; direction: 'up' | 'down' | 'neutral'; label: string } | null = null
+  if (measurements.length > 1) {
+    if (fatSummary?.delta) {
+      const baselineFormatted = fatSummary.baselineDate
+        ? formatDateRu(fatSummary.baselineDate, 'long')
+        : baseline
+        ? formatDateRu(baseline.date, 'long')
+        : ''
+      const hasWithDate = fatSummary.delta.label.includes(' с ')
+      const label = hasWithDate
+        ? fatSummary.delta.label
+        : baselineFormatted
+        ? `${fatSummary.delta.formatted} с ${baselineFormatted}`
+        : fatSummary.delta.label
+      bodyFatDelta = {
         formatted: fatSummary.delta.formatted,
         direction: fatSummary.delta.direction,
-        label: fatSummary.delta.label,
+        label,
       }
-    : measurements.length > 1 && latest?.bodyFat !== undefined && baseline?.bodyFat !== undefined
-    ? calculateDelta(latest.bodyFat, baseline.bodyFat, '%', baseline.date)
-    : null
+    } else if (latest?.bodyFat !== undefined && baseline?.bodyFat !== undefined) {
+      bodyFatDelta = calculateDelta(
+        latest.bodyFat,
+        baseline.bodyFat,
+        '%',
+        baseline.measuredAt || baseline.date
+      )
+    }
+  }
 
-  // Muscle Mass Delta
+  // Muscle Mass vs Lean Body Mass (strict terminology)
+  const isLeanBodyMass = muscleSummary?.metricType === 'lean_body_mass'
+  const muscleName = isLeanBodyMass ? 'Безжировая масса' : 'Мышечная масса'
   const currentMuscleMass = muscleSummary?.currentValue ?? latest?.muscleMass
   const muscleProvenance = muscleSummary?.provenanceLabel
-  const muscleMassDelta = muscleSummary?.delta
-    ? {
+  let muscleMassDelta: { formatted: string; direction: 'up' | 'down' | 'neutral'; label: string } | null = null
+  if (measurements.length > 1) {
+    if (muscleSummary?.delta) {
+      const baselineFormatted = muscleSummary.baselineDate
+        ? formatDateRu(muscleSummary.baselineDate, 'long')
+        : baseline
+        ? formatDateRu(baseline.date, 'long')
+        : ''
+      const hasWithDate = muscleSummary.delta.label.includes(' с ')
+      const label = hasWithDate
+        ? muscleSummary.delta.label
+        : baselineFormatted
+        ? `${muscleSummary.delta.formatted} с ${baselineFormatted}`
+        : muscleSummary.delta.label
+      muscleMassDelta = {
         formatted: muscleSummary.delta.formatted,
         direction: muscleSummary.delta.direction,
-        label: muscleSummary.delta.label,
+        label,
       }
-    : measurements.length > 1 && latest?.muscleMass !== undefined && baseline?.muscleMass !== undefined
-    ? calculateDelta(latest.muscleMass, baseline.muscleMass, 'кг', baseline.date)
-    : null
+    } else if (latest?.muscleMass !== undefined && baseline?.muscleMass !== undefined) {
+      muscleMassDelta = calculateDelta(
+        latest.muscleMass,
+        baseline.muscleMass,
+        'кг',
+        baseline.measuredAt || baseline.date
+      )
+    }
+  }
 
-  const visitsPlural = pluralize(data.visitsThisMonth, 'тренировка', 'тренировки', 'тренировок')
-  const weeksPlural = pluralize(data.consistentWeeks, 'неделя', 'недели', 'недель')
+  const displayWeight = animatedWeight !== undefined ? animatedWeight : currentWeight
 
   return (
     <div className="page progress-page">
@@ -173,33 +205,6 @@ export function ProgressPage() {
         }
       />
 
-      {/* Top summary stats - cardless metric columns */}
-      <Section className="progress-summary-section" aria-label="Сводка активности">
-        <div className="progress-summary-grid">
-          <div className="summary-stat-block">
-            <span className="eyebrow">ТРЕНИРОВКИ</span>
-            <div className="summary-stat-block__value-row">
-              <CalendarCheck2 size={18} className="summary-stat__icon" aria-hidden="true" />
-              <strong>{data.visitsThisMonth}</strong>
-            </div>
-            <span>{visitsPlural} за месяц</span>
-          </div>
-
-          <Divider orientation="vertical" />
-
-          <div className="summary-stat-block">
-            <span className="eyebrow">ДИСЦИПЛИНА</span>
-            <div className="summary-stat-block__value-row">
-              <Activity size={18} className="summary-stat__icon" aria-hidden="true" />
-              <strong>{data.consistentWeeks}</strong>
-            </div>
-            <span>{weeksPlural} подряд</span>
-          </div>
-        </div>
-      </Section>
-
-      <Divider />
-
       {/* Weight Hero Section - cardless athletic typography */}
       {currentWeight !== undefined ? (
         <Section
@@ -218,13 +223,13 @@ export function ProgressPage() {
               >
                 {weightDelta.direction === 'down' && <TrendingDown size={14} aria-hidden="true" />}
                 {weightDelta.direction === 'up' && <TrendingUp size={14} aria-hidden="true" />}
-                <span>{weightDelta.formatted}</span>
+                <span>{weightDelta.label}</span>
               </span>
             )}
           </div>
 
           <HeroMetric
-            value={formatDecimal(animatedWeight, 1)}
+            value={formatDecimal(displayWeight ?? currentWeight, 1)}
             unit="кг"
             className="progress-weight-hero"
           />
@@ -257,7 +262,7 @@ export function ProgressPage() {
 
       <Divider />
 
-      {/* Other Metrics Section - cardless rows */}
+      {/* Supporting Body Metrics Section - remains visible even when weight is missing */}
       {(currentBodyFat !== undefined || currentMuscleMass !== undefined) && (
         <Section aria-label="Дополнительные показатели" className="progress-metrics-section">
           <SectionHeader title="Показатели" eyebrow="СОСТАВ ТЕЛА" />
@@ -282,7 +287,7 @@ export function ProgressPage() {
                     <span className="metric-change" title={bodyFatDelta.label} aria-label={bodyFatDelta.label}>
                       {bodyFatDelta.direction === 'down' && <TrendingDown size={14} aria-hidden="true" />}
                       {bodyFatDelta.direction === 'up' && <TrendingUp size={14} aria-hidden="true" />}
-                      <span>{bodyFatDelta.formatted}</span>
+                      <span>{bodyFatDelta.label}</span>
                     </span>
                   )}
                 </div>
@@ -292,12 +297,12 @@ export function ProgressPage() {
             {currentMuscleMass !== undefined && (
               <div
                 className="cardless-metric-row"
-                aria-label={`Мышечная масса ${formatDecimal(currentMuscleMass, 1)} кг${
+                aria-label={`${muscleName} ${formatDecimal(currentMuscleMass, 1)} кг${
                   muscleMassDelta ? `, изменение ${muscleMassDelta.label}` : ''
                 }`}
               >
                 <div className="cardless-metric-row__info">
-                  <span className="cardless-metric-row__name">Мышечная масса</span>
+                  <span className="cardless-metric-row__name">{muscleName}</span>
                   {muscleProvenance && (
                     <span className="cardless-metric-row__provenance">{muscleProvenance}</span>
                   )}
@@ -309,7 +314,7 @@ export function ProgressPage() {
                     <span className="metric-change" title={muscleMassDelta.label} aria-label={muscleMassDelta.label}>
                       {muscleMassDelta.direction === 'down' && <TrendingDown size={14} aria-hidden="true" />}
                       {muscleMassDelta.direction === 'up' && <TrendingUp size={14} aria-hidden="true" />}
-                      <span>{muscleMassDelta.formatted}</span>
+                      <span>{muscleMassDelta.label}</span>
                     </span>
                   )}
                 </div>

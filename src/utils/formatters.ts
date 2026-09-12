@@ -41,6 +41,37 @@ export function formatDateRu(dateStr: string, format: 'short' | 'long' = 'short'
   }
 }
 
+/**
+ * Format full date and time in Russian, e.g. "8 сентября 2026, 08:30" or "8 сентября 2026"
+ */
+export function formatDateTimeRu(dateStr: string): string {
+  try {
+    const trimmed = dateStr.trim()
+    const isDayOnly = /^\d{4}-\d{2}-\d{2}$/.test(trimmed)
+    const d = isDayOnly ? new Date(`${trimmed}T12:00:00`) : new Date(trimmed)
+    if (isNaN(d.getTime())) return dateStr
+
+    const dateFormatted = d.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+
+    if (isDayOnly) {
+      return dateFormatted
+    }
+
+    const timeFormatted = d.toLocaleTimeString('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+
+    return `${dateFormatted}, ${timeFormatted}`
+  } catch {
+    return dateStr
+  }
+}
+
 export interface DeltaInfo {
   diff: number
   formatted: string
@@ -131,3 +162,13 @@ export function formatHeroSemanticDate(dateStr?: string | null, isoStr?: string 
     return dateStr ?? ''
   }
 }
+
+/**
+ * Clean and preserve full specialty author text, ensuring capital first letter.
+ */
+export function cleanSpecialty(tag: string): string {
+  const trimmed = tag.trim()
+  if (!trimmed) return ''
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
+}
+

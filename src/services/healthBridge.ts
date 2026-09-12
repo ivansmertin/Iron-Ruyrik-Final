@@ -73,11 +73,11 @@ export function isProviderRelevantForPlatform(
   provider: HealthSourceProvider,
   platform: ClientPlatform
 ): boolean {
-  if (provider === 'apple_health') {
-    return platform === 'ios'
+  if (platform === 'ios') {
+    return provider === 'apple_health'
   }
-  if (provider === 'health_connect' || provider === 'samsung_health') {
-    return platform === 'android'
+  if (platform === 'android') {
+    return provider === 'health_connect' || provider === 'samsung_health'
   }
   return true
 }
@@ -100,7 +100,7 @@ export const HEALTH_PERMISSION_EXPLANATION = {
     requestedData: [
       'Вес (WeightRecord)',
       'Процент жира (BodyFatRecord)',
-      'Мышечная масса (LeanBodyMassRecord)',
+      'Безжировая масса (LeanBodyMassRecord)',
     ],
   },
 }

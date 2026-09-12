@@ -1,0 +1,162 @@
+{
+  "320x740": {
+    "hasHorizontalScroll": false,
+    "name": "Алексей Смирнов",
+    "nameFontSize": "24px",
+    "city": "Великий Новгород",
+    "avatarSize": {
+      "width": 52,
+      "height": 52
+    },
+    "memTitle": "Абонемент на 8 занятий",
+    "memBigNum": "5",
+    "memExpiry": "До 15 октября",
+    "memIconSize": {
+      "width": 44,
+      "height": 44
+    },
+    "historyCount": 3,
+    "allHistoryBtnSize": {
+      "width": 86,
+      "height": 44
+    },
+    "settingsRows": [
+      {
+        "text": "Источники данных",
+        "height": 62
+      },
+      {
+        "text": "Уведомления",
+        "height": 79
+      },
+      {
+        "text": "О приложении",
+        "height": 63
+      },
+      {
+        "text": "Выход из профиля",
+        "height": 79
+      }
+    ]
+  },
+  "360x800": {
+    "hasHorizontalScroll": false,
+    "name": "Алексей Смирнов",
+    "nameFontSize": "24px",
+    "city": "Великий Новгород",
+    "avatarSize": {
+      "width": 52,
+      "height": 52
+    },
+    "memTitle": "Абонемент на 8 занятий",
+    "memBigNum": "5",
+    "memExpiry": "До 15 октября",
+    "memIconSize": {
+      "width": 44,
+      "height": 44
+    },
+    "historyCount": 3,
+    "allHistoryBtnSize": {
+      "width": 86,
+      "height": 44
+    },
+    "settingsRows": [
+      {
+        "text": "Источники данных",
+        "height": 62
+      },
+      {
+        "text": "Уведомления",
+        "height": 79
+      },
+      {
+        "text": "О приложении",
+        "height": 63
+      },
+      {
+        "text": "Выход из профиля",
+        "height": 79
+      }
+    ]
+  },
+  "390x844": {
+    "hasHorizontalScroll": false,
+    "name": "Алексей Смирнов",
+    "nameFontSize": "24px",
+    "city": "Великий Новгород",
+    "avatarSize": {
+      "width": 52,
+      "height": 52
+    },
+    "memTitle": "Абонемент на 8 занятий",
+    "memBigNum": "5",
+    "memExpiry": "До 15 октября",
+    "memIconSize": {
+      "width": 44,
+      "height": 44
+    },
+    "historyCount": 3,
+    "allHistoryBtnSize": {
+      "width": 89,
+      "height": 44
+    },
+    "settingsRows": [
+      {
+        "text": "Источники данных",
+        "height": 62
+      },
+      {
+        "text": "Уведомления",
+        "height": 79
+      },
+      {
+        "text": "О приложении",
+        "height": 63
+      },
+      {
+        "text": "Выход из профиля",
+        "height": 63
+      }
+    ]
+  },
+  "430x932": {
+    "hasHorizontalScroll": false,
+    "name": "Алексей Смирнов",
+    "nameFontSize": "24px",
+    "city": "Великий Новгород",
+    "avatarSize": {
+      "width": 52,
+      "height": 52
+    },
+    "memTitle": "Абонемент на 8 занятий",
+    "memBigNum": "5",
+    "memExpiry": "До 15 октября",
+    "memIconSize": {
+      "width": 44,
+      "height": 44
+    },
+    "historyCount": 3,
+    "allHistoryBtnSize": {
+      "width": 89,
+      "height": 44
+    },
+    "settingsRows": [
+      {
+        "text": "Источники данных",
+        "height": 62
+      },
+      {
+        "text": "Уведомления",
+        "height": 79
+      },
+      {
+        "text": "О приложении",
+        "height": 63
+      },
+      {
+        "text": "Выход из профиля",
+        "height": 63
+      }
+    ]
+  }
+}

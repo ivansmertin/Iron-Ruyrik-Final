@@ -1,0 +1,15 @@
+
+> zhelezny-ryurik-app@0.1.0 build
+> tsc -b && vite build
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 1781 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   1.22 kB │ gzip:   0.58 kB
+dist/assets/index-rq0kRBi4.css   84.04 kB │ gzip:  13.71 kB
+dist/assets/web-DXmpz61x.js       0.84 kB │ gzip:   0.40 kB
+dist/assets/web-D7DiDn5q.js       0.90 kB │ gzip:   0.45 kB
+dist/assets/index-DjaJ12R2.js   430.04 kB │ gzip: 126.95 kB
+✓ built in 2.40s

@@ -1,0 +1,5 @@
+error /schedule DONE
+error /booking/s0 DONE
+error /booking/s0?trainer=dima DONE
+error /trainers DONE
+error /trainers/dima DONE

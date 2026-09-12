@@ -1,0 +1,32 @@
+ M DESIGN_SYSTEM.md
+ M HEALTH_INTEGRATIONS.md
+ M src/__tests__/admin_and_booking_remediation.test.tsx
+ M src/__tests__/home_page_redesign.test.tsx
+ M src/__tests__/integrations_and_booking.test.tsx
+ M src/components/BookingCard.tsx
+ M src/components/DateStrip.tsx
+ M src/components/GymNewsWidget.tsx
+ M src/components/HealthSourcesModal.tsx
+ M src/components/Modal.tsx
+ M src/components/Navigation.tsx
+ M src/components/TrainerCard.tsx
+ M src/pages/BookingPage.tsx
+ M src/pages/HomePage.tsx
+ M src/pages/IntegrationsPage.tsx
+ M src/pages/SchedulePage.tsx
+ M src/pages/TrainerPage.tsx
+ M src/pages/TrainersPage.tsx
+ M src/services/healthBridge.ts
+ M src/styles/index.css
+ M src/styles/motion.css
+ M src/types/domain.ts
+ M src/utils/formatters.ts
+?? MIGRATION_LOG.md
+?? qa/
+?? src/__tests__/m02_integrations_health_sources.test.tsx
+?? src/__tests__/m03_home_polish.test.tsx
+?? src/__tests__/m04_schedule_context.test.tsx
+?? src/__tests__/m05_booking_flow.test.tsx
+?? src/__tests__/m06_trainers_editorial.test.tsx
+?? src/__tests__/m07_trainer_profile.test.tsx
+?? src/hooks/useHealthSources.ts
